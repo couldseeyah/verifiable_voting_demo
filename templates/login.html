@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Voting Platform - Login</title>
+    <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Centering the login container */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        /* Styling the main container */
+        .main-container {
+            text-align: center;
+        }
+
+        /* Heading styling */
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Styling the login form container */
+        .login-container {
+            width: 300px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Header text for login section */
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        /* CNIC input field styling */
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        /* Login button styling */
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #3a61e3;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #22408a;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h1>Online Voting Platform</h1>
+        <div class="login-container">
+            <h2>Login</h2>
+            <form action="login_process.html" method="post">
+                <input type="text" name="cnic" placeholder="Enter CNIC" required>
+                <input type="submit" value="Login">
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

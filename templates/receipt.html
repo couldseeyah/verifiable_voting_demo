@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voter Receipt</title>
+    <style>
+        /* Reset styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Centering content vertically with column direction */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            text-align: center;
+        }
+
+        /* Heading styling */
+        h1 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Receipt container styling */
+        .receipt-container {
+            width: 300px;
+            padding: 20px;
+            border: 1px solid #000;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+
+        /* Receipt title */
+        h2 {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Ballot ID and CNIC styling */
+        .info {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* Hash, Date, and PS# styling */
+        .details {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Voting Complete. Your vote has been casted and recorded.</h1>
+
+    <div class="receipt-container">
+        <h2>VOTER RECEIPT</h2>
+        
+        <!-- Ballot ID and CNIC -->
+        <div class="info">
+            BALLOT ID: 327382947<br>
+            CNIC: 12345-6789012-3
+        </div>
+
+        <!-- Hash, Date, and PS# -->
+        <div class="details">
+            HASH: 3278gsv278bd8sha<br>
+            2022-09-27 18:00:00.000<br>
+            PS#23890
+        </div>
+    </div>
+
+</body>
+</html>

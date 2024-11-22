@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Encrypted Votes</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Search Encrypted Votes</h1>
+        </header>
+        <main class="voting-section">
+            <form action="/search-vote" method="GET" class="search-form">
+                <h2>Enter Vote ID</h2>
+                <input type="text" name="vote_id" placeholder="Enter Vote ID" class="search-input" required>
+                <button type="submit" class="submit-button">Search</button>
+            </form>
+            <div id="vote-result" class="result-section">
+                <!-- The search result will be displayed here -->
+            </div>
+        </main>
+    </div>
+</body>
+</html>

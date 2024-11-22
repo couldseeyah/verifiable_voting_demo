@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Setup</title>
+    <style>
+        /* Reset and basic styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="datetime-local"]:focus {
+            border-color: #3a85ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3a85ff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #336cd1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Election Setup</h1>
+        <form action="/setup_election" method="post">
+            <!-- Election ID -->
+            <div class="form-group">
+                <label for="election_id">Election ID</label>
+                <input type="text" id="election_id" name="election_id" placeholder="Enter Election ID" required>
+            </div>
+            
+            <!-- Election Start Time -->
+            <div class="form-group">
+                <label for="start_time">Election Start Time</label>
+                <input type="datetime-local" id="start_time" name="start_time" required>
+            </div>
+
+            <!-- Election End Time -->
+            <div class="form-group">
+                <label for="end_time">Election End Time</label>
+                <input type="datetime-local" id="end_time" name="end_time" required>
+            </div>
+            
+            <!-- Number of Candidates -->
+            <div class="form-group">
+                <label for="num_candidates">Enter Number of Candidates</label>
+                <input type="number" id="num_candidates" name="num_candidates" min="1" max="10" required>
+            </div>
+            
+            <button type="submit">Continue</button>
+        </form>
+    </div>
+</body>
+</html>

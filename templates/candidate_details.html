@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Details</title>
+    <style>
+        /* Reset and basic styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            width: 100%;
+            max-width: 600px; /* Wider form container */
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="datetime-local"],
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="datetime-local"]:focus,
+        select:focus {
+            border-color: #3a85ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3a85ff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #336cd1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Election Setup - Enter Candidate Details</h1>
+
+        <form action="/submit_election" method="post">
+            <!-- This template dynamically generates fields for each candidate -->
+            {% for i in range(1, num_candidates + 1) %}
+                <div class="form-group">
+                    <label for="candidate_name_{{ i }}">Candidate {{ i }} Name:</label>
+                    <input type="text" id="candidate_name_{{ i }}" name="candidate_name_{{ i }}" required>
+
+                    <label for="candidate_symbol_{{ i }}">Candidate {{ i }} Symbol:</label>
+                    <select id="candidate_symbol_{{ i }}" name="candidate_symbol_{{ i }}" required>
+                        <option value="symbol1">Symbol 1</option>
+                        <option value="symbol2">Symbol 2</option>
+                        <option value="symbol3">Symbol 3</option>
+                    </select>
+                </div>
+            {% endfor %}
+            
+            <button type="submit">Submit Election Setup</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Results</title>
+    <style>
+        /* Basic styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            gap: 30px; /* Increase the gap between the cards */
+            width: 100%;
+            max-width: 1200px; /* Increase max-width for larger cards */
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        .card {
+            background-color: #ffffff;
+            padding: 30px; /* Increase padding for larger content area */
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.tally {
+            flex: 0 0 65%; /* Maintain 65% width for the Tally card */
+            max-width: 780px; /* Increase max-width for the Tally card */
+        }
+
+        .card.audit {
+            flex: 0 0 35%; /* Maintain 35% width for the Audit card */
+            max-width: 420px; /* Increase max-width for the Audit card */
+        }
+
+
+
+        h2 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        .value {
+            margin-left: 10px;
+            color: #555;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3a85ff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: #336cd1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Election Tally Card -->
+    <div class="card">
+        <h2>Elections Tally</h2>
+        
+        <div class="result-item">
+            <span class="label">Encrypted Total:</span>
+            <span class="value">2345</span> <!-- Dummy encrypted total -->
+        </div>
+
+        <div class="result-item">
+            <span class="label">Decrypted Total:</span>
+            <span class="value">2310</span> <!-- Dummy decrypted total -->
+        </div>
+
+        <!-- Candidate vote counts -->
+        <div class="result-item">
+            <span class="label">Candidate A:</span>
+            <span class="value">1200 votes</span>
+        </div>
+        <div class="result-item">
+            <span class="label">Candidate B:</span>
+            <span class="value">850 votes</span>
+        </div>
+        <div class="result-item">
+            <span class="label">Candidate C:</span>
+            <span class="value">260 votes</span>
+        </div>
+    </div>
+
+    <!-- Audit Results Card -->
+    <div class="card">
+        <h2>Audit Results</h2>
+        
+        <div class="result-item">
+            <span class="label">Randomness:</span>
+            <span class="value">0.78329</span> <!-- Dummy randomness value -->
+        </div>
+
+        <!-- Button to perform backend operation and show results -->
+        <form action="/perform_audit" method="post">
+            <button type="submit">Run Audit Operation</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
