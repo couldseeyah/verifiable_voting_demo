@@ -1,6 +1,18 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for
+from database_handler import Database
+from dotenv import load_dotenv
+import os
+import datetime
 
 app = Flask(__name__)
+load_dotenv()
+
+# use .env file for this??
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+db_handler = Database(SUPABASE_URL, SUPABASE_KEY)
+
+print("Supabase URL: ", SUPABASE_URL)
 
 # starting page for the voting app
 @app.route('/')
@@ -9,7 +21,8 @@ def home():
 
 @app.route('/login', methods=['POST'])
 def login():
-    user_type = request.form.get('user_type')  
+    user_type = request.form.get('user_type')
+    print("USER TYPE: ", user_type)  
     if user_type == 'admin':
         return redirect(url_for('admin_login'))
     elif user_type == 'voter':
@@ -20,131 +33,119 @@ def admin_login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        admin = Admins.query.filter_by(username=username, password=password).first()
-        if admin:
-            # Fetch all elections
-            elections = Elections.query.all()
-            last_election = Elections.query.order_by(Elections.id.desc()).first()
+        print(f"Retrieved username {username} pw: {password}")
+        if db_handler.check_admin_username(username) and db_handler.check_admin_password(username, password):
+            print("Login valid.")
+            # Fetch all elections using the db_handler class
+            response = db_handler.supabase.table("elections").select("*").execute()
+            elections = response.data
+            last_election = elections[-1] if elections else None
             return render_template('admin_dashboard.html', elections=elections, last_election=last_election)
         else:
             return "Invalid credentials", 401
-    return render_template('admin_login.html')
-
-@app.route('/admin/end_election', methods=['POST'])
-def end_election():
-    # End ongoing election
-    last_election = Elections.query.order_by(Elections.id.desc()).first()
-    if last_election and last_election.current_status:
-        last_election.current_status = False
-        last_election.results_visibility = False
-        db.session.commit()
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/start_election', methods=['POST'])
-def start_election():
-    # Start a new election
-    num_candidates = request.form['num_candidates']
-    start_time = datetime.now()
-    new_election = Elections(
-        num_candidates=num_candidates,
-        starting_time=start_time,
-        current_status=True,
-        results_visibility=False
-    )
-    Elections.query.update({Elections.results_visibility: False})  # Turn off previous results
-    db.session.add(new_election)
-    db.session.commit()
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/set_results_visibility', methods=['POST'])
-def set_results_visibility():
-    election_id = request.form['election_id']
-    Elections.query.update({Elections.results_visibility: False})  # Turn off all results
-    election = Elections.query.get(election_id)
-    if election and not election.current_status:
-        election.results_visibility = True
-        db.session.commit()
-    return redirect(url_for('admin_dashboard'))
+    return render_template('login.html')
 
 @app.route('/voter/login', methods=['GET', 'POST'])
 def voter_login():
     if request.method == 'POST':
         cnic = request.form['cnic']
-        last_election = Elections.query.order_by(Elections.id.desc()).first()
         
-        if not last_election or not last_election.current_status:
-            return "No ongoing election", 403
-        
-        existing_vote = Encryptions.query.filter_by(election_id=last_election.id, cnic=cnic).first()
-        if existing_vote:
-            return render_template('vote_receipt.html', vote=existing_vote)
+        # Retrieve vote data by CNIC using Supabase handler
+        vote_data = db_handler.retrieve_vote_data(cnic)
+        if vote_data:
+            return render_template('receipt.html', vote_data=vote_data)
         else:
-            return redirect(url_for('cast_vote', cnic=cnic))
-    return render_template('voter_login.html')
+            return "No vote data found for this CNIC", 404
+    return render_template('login.html')
 
-@app.route('/voter/cast_vote/<cnic>', methods=['GET', 'POST'])
-def cast_vote(cnic):
-    if request.method == 'POST':
-        election_id = request.form['election_id']
-        encryption = request.form['encryption']
-        hash_value = request.form['hash']
-        random_factor = request.form['random_factor']
 
-        new_vote = Encryptions(
-            election_id=election_id,
-            cnic=cnic,
-            encryption=encryption,
-            hash=hash_value,
-            random_factor=random_factor,
-            time_of_vote=datetime.now()
-        )
-        db.session.add(new_vote)
-        db.session.commit()
-        return render_template('vote_receipt.html', vote=new_vote)
-    return render_template('cast_vote.html', cnic=cnic)
+@app.route('/admin/end_election', methods=['POST'])
+def end_election():
+    # End ongoing election
+    response = db_handler.end_election()
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/start_election', methods=['POST'])
+def start_election():
+    # Parse form data
+    election_id = int(request.form['election_id'])
+    num_candidates = int(request.form['num_candidates'])
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    end_time = datetime.datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M:%SZ')
+    status = True 
+    results_visibility = False  
+    encrypted_sum = request.form['encrypted_sum']
+    encrypted_randomness = request.form['encrypted_randomness']
+    decrypted_tally = request.form['decrypted_tally']
+
+    #storing data in DB
+    response = db_handler.store_election_data(
+        election_id=election_id,
+        num_candidates=num_candidates,
+        start_time=start_time,
+        end_time=end_time,
+        status=status,
+        results_visibility=results_visibility,
+        encrypted_sum=encrypted_sum,
+        encrypted_randomness=encrypted_randomness,
+        decrypted_tally=decrypted_tally
+    )
+
+    if response.get("status_code") == 201:
+        return redirect(url_for('admin_dashboard'))
+    else:
+        return "Failed to start the election", 500
+
+
+@app.route('/admin/set_results_visibility', methods=['POST'])
+def set_results_visibility():
+    election_id = request.form['election_id']
+    response = db_handler.update_result_visibility(election_id)
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/vote/cast_vote/<cnic>', methods=['POST'])
+def cast_vote():
+    cnic = request.form['cnic']
+    ballot_id = int(request.form['ballot_id'])
+    election_id = int(request.form['election_id'])
+    encryption = request.form['encryption']
+    hash_value = request.form['hash_value']
+    random_factor = request.form['random_factor']
+    timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+    # Store vote data using Supabase handler
+    response = db_handler.store_vote_data(
+        cnic=cnic,
+        ballot_id=ballot_id,
+        election_id=election_id,
+        encryption=encryption,
+        hash_value=hash_value,
+        random_factor=random_factor,
+        timestamp=timestamp
+    )
+    if response.get("status_code") == 201:
+        return "Vote successfully cast!", 200
+    else:
+        return "Failed to cast vote", 500
 
 @app.route('/search_encryptions', methods=['GET'])
 def search_encryptions():
-    visible_election = Elections.query.filter_by(results_visibility=True).first()
+    # Fetch the first election with visible results using the DB handler
+    visible_election = db_handler.get_visible_election()
     if visible_election:
-        votes = Encryptions.query.filter_by(election_id=visible_election.id).all()
+        # Fetch votes for the visible election using the DB handler
+        votes = db_handler.get_votes_by_election(visible_election['id'])
         return render_template('search_encryptions.html', votes=votes)
     return "No visible results", 403
 
+
 @app.route('/results', methods=['GET'])
 def results():
-    visible_election = Elections.query.filter_by(results_visibility=True).first()
-    if visible_election:
-        results = visible_election.decrypted_tally
+    last_election = db_handler.retrieve_last_election()
+    if last_election:
+        results = last_election.decrypted_tally
         return render_template('results.html', results=results)
     return "No results to display", 403
-
-
-
-
-# @app.route('/')
-# def voting_page():
-#     candidates = [
-#         ("Socialist", "socialist.png"),
-#         ("Libertarian", "libertarian.png"),
-#         ("Green", "green.png"),
-#         ("Independent", "independent.png"),
-#         ("Anarchist", "anarchist.png"),
-#         ("Republican", "republican.png"),
-#         ("Democrat", "democrat.png")
-#     ]
-#     return render_template('cast_vote.html', candidates=candidates)
-
-
-# @app.route('/search-vote', methods=['GET'])
-# def search_vote():
-#     vote_id = request.args.get('vote_id')
-#     if vote_id in encrypted_votes:
-#         return jsonify({"vote_id": vote_id, "encrypted_data": encrypted_votes[vote_id]})
-#     else:
-#         return jsonify({"error": "Vote ID not found"}), 404
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)

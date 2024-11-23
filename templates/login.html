@@ -126,19 +126,21 @@
             <label class="form-check-label" for="flexSwitchCheckDefault">Log in as Admin</label>
         </div>
 
-        <!-- Default Login Form (CNIC) -->
+        <!-- Default Login Form (Voter) -->
         <div id="loginContainerDefault" class="login-container">
             <h2>Voter Login</h2>
-            <form action="login_process.html" method="post">
+            <form action="{{ url_for('login') }}" method="post">
+                <input type="hidden" name="user_type" value="voter">
                 <input type="text" name="cnic" placeholder="Enter CNIC" required>
                 <input type="submit" value="Login">
             </form>
         </div>
 
-        <!-- Alternative Login Form (Username & Password) -->
+        <!-- Alternative Login Form (Admin) -->
         <div id="loginContainerAlt" class="login-container" style="display: none;">
             <h2>Administrator Login</h2>
-            <form action="login_process.html" method="post">
+            <form action="{{ url_for('login') }}" method="post">
+                <input type="hidden" name="user_type" value="admin">
                 <input type="text" name="username" placeholder="Enter Username" required>
                 <input type="password" name="password" placeholder="Enter Password" required>
                 <input type="submit" value="Login">
