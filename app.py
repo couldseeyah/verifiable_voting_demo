@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from database_handler import Database
 from dotenv import load_dotenv
 import os
-import datetime
+from datetime import datetime, timezone
 
 app = Flask(__name__)
 load_dotenv()
@@ -58,25 +58,33 @@ def voter_login():
             return "No vote data found for this CNIC", 404
     return render_template('login.html')
 
-
 @app.route('/admin/end_election', methods=['POST'])
 def end_election():
     # End ongoing election
     response = db_handler.end_election()
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/election_setup', methods=['POST'])
+def election_setup():
+    return render_template('election_setup.html')
+
 @app.route('/admin/start_election', methods=['POST'])
 def start_election():
     # Parse form data
     election_id = int(request.form['election_id'])
     num_candidates = int(request.form['num_candidates'])
-    start_time = datetime.datetime.now(datetime.timezone.utc)
-    end_time = datetime.datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M:%SZ')
+    start_time_str = request.form['start_time']
+    end_time_str = request.form['end_time']
     status = True 
     results_visibility = False  
-    encrypted_sum = request.form['encrypted_sum']
-    encrypted_randomness = request.form['encrypted_randomness']
-    decrypted_tally = request.form['decrypted_tally']
+    encrypted_sum = None
+    encrypted_randomness = None
+    decrypted_tally = None
+
+    # Convert to datetime objects
+    start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').time()
+    end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M').time()
+
 
     #storing data in DB
     response = db_handler.store_election_data(
@@ -90,10 +98,13 @@ def start_election():
         encrypted_randomness=encrypted_randomness,
         decrypted_tally=decrypted_tally
     )
-
-    if response.get("status_code") == 201:
-        return redirect(url_for('admin_dashboard'))
+    if response.data:
+        response = db_handler.supabase.table("elections").select("*").execute()
+        elections = response.data
+        last_election = elections[-1] if elections else None
+        return render_template('admin_dashboard.html', elections=elections, last_election=last_election)
     else:
+        print(f"Error inserting election: {response}")
         return "Failed to start the election", 500
 
 

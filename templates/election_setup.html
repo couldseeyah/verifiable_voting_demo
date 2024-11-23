@@ -90,7 +90,7 @@
 <body>
     <div class="container">
         <h1>Election Setup</h1>
-        <form action="/setup_election" method="post">
+        <form action="{{ url_for('start_election')  }}" method="post">
             <!-- Election ID -->
             <div class="form-group">
                 <label for="election_id">Election ID</label>

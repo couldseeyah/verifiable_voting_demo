@@ -139,7 +139,7 @@
         <!-- Alternative Login Form (Admin) -->
         <div id="loginContainerAlt" class="login-container" style="display: none;">
             <h2>Administrator Login</h2>
-            <form action="{{ url_for('login') }}" method="post">
+            <form action="{{ url_for('admin_login') }}" method="post">
                 <input type="hidden" name="user_type" value="admin">
                 <input type="text" name="username" placeholder="Enter Username" required>
                 <input type="password" name="password" placeholder="Enter Password" required>
