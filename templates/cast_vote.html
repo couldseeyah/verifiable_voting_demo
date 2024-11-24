@@ -1,35 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electronic Voting</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
+
 <body>
     <div class="container">
         <header class="header">
             <h1>Cast Your Vote</h1>
+            <h1>Ballot ID: {{ballot_id}}</h1>
         </header>
         <main class="voting-section">
-            <form action="/submit-vote" method="POST" class="vote-form">
+            <form action="{{ url_for('cast_vote', cnic=cnic) }}" method="POST" class="vote-form">
                 <h2>Select a Candidate</h2>
                 <div class="candidate-grid">
-                    {% for candidate, symbol in candidates %}
-                        <div class="candidate">
-                            <label>
-                                <div class="candidate-details">
-                                    <img src="/static/images/{{ symbol }}" alt="{{ candidate }} symbol" class="candidate-symbol">
-                                    <input type="radio" name="candidate" value="{{ candidate }}">
-                                    <span>{{ candidate }}</span>
-                                </div>
-                            </label>
-                        </div>
+                    {% for candidate in candidates %}
+                    <div class="candidate">
+                        <label>
+                            <div class="candidate-details">
+                                <img src="{{ candidate.symbol_url }}" alt="{{ candidate.name }} symbol"
+                                    class="candidate-symbol">
+                                <input type="radio" name="candidate" value="{{ candidate.cand_id }}" required>
+                                <span>{{ candidate.name }}</span>
+                            </div>
+                        </label>
+                    </div>
                     {% endfor %}
                 </div>
+
+                <!-- Hidden Inputs -->
+                <input type="hidden" name="cnic" value="{{ cnic }}">
+                <input type="hidden" name="ballot_id" value="{{ ballot_id }}">
+                <input type="hidden" name="election_id" value="{{ election_id }}">
+
                 <button type="submit" class="submit-button">Submit Vote</button>
             </form>
         </main>
     </div>
 </body>
+
 </html>

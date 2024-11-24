@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,7 +27,8 @@
             background-color: #ffffff;
             padding: 30px;
             width: 100%;
-            max-width: 600px; /* Wider form container */
+            max-width: 600px;
+            /* Wider form container */
             border-radius: 8px;
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
             text-align: center;
@@ -89,35 +91,33 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Election Setup - Enter Candidate Details</h1>
-
-        <form action="{{ url_for('start_election') }}" method="post">
+        <form action="{{ url_for('start_election') }}" method="post" enctype="multipart/form-data">
             <input type="hidden" name="election_id" value="{{ election_id }}">
             <input type="hidden" name="num_candidates" value="{{ num_candidates }}">
             <input type="hidden" name="start_time" value="{{ start_time }}">
             <input type="hidden" name="end_time" value="{{ end_time }}">
             <!-- This template dynamically generates fields for each candidate -->
             {% for i in range(1, num_candidates + 1) %}
-                <div class="form-group">
-                    <label for="candidate_name_{{ i }}">Candidate {{ i }} Name:</label>
-                    <input type="text" id="candidate_name_{{ i }}" name="candidate_name_{{ i }}" required>
+            <div class="form-group">
+                <label for="candidate_name_{{ i }}">Candidate {{ i }} Name:</label>
+                <input type="text" id="candidate_name_{{ i }}" name="candidate_name_{{ i }}" required>
 
-                    <label for="candidate_id_{{ i }}">Candidate {{ i }} ID:</label>
-                    <input type="text" id="candidate_id_{{ i }}" name="candidate_id_{{ i }}" required>
+                <label for="candidate_id_{{ i }}">Candidate {{ i }} ID:</label>
+                <input type="text" id="candidate_id_{{ i }}" name="candidate_id_{{ i }}" required>
 
-                    <label for="candidate_symbol_{{ i }}">Candidate {{ i }} Symbol:</label>
-                    <select id="candidate_symbol_{{ i }}" name="candidate_symbol_{{ i }}" required>
-                        <option value="symbol1">Symbol 1</option>
-                        <option value="symbol2">Symbol 2</option>
-                        <option value="symbol3">Symbol 3</option>
-                    </select>
-                </div>
+                <label for="candidate_symbol_{{ i }}">Candidate {{ i }} Symbol:</label>
+                <input type="file" id="candidate_symbol_{{ i }}" name="candidate_symbol_{{ i }}" accept="image/*"
+                    required>
+            </div>
             {% endfor %}
-            
+
             <button type="submit">Submit Election Setup</button>
         </form>
     </div>
 </body>
+
 </html>

@@ -109,6 +109,16 @@
             box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
             transition: transform 0.15s ease-in-out;
         }
+
+        .alert-box {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+        }
+
     </style>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU5wD9vE2FdhbDvH40EE3UkCzKN8ngHi8jKnd" crossorigin="anonymous">
@@ -117,6 +127,13 @@
 <body>
 
     <div class="main-container">
+        {% if message %}
+        <div class="alert-box" id="alertBox">
+            {{ message }}
+            <button class="close-btn" onclick="closeAlert()">×</button>
+        </div>
+        {% endif %}
+
         <h1>Online Voting Platform</h1>
 
         <!-- Toggle Switch -->
@@ -129,7 +146,7 @@
         <!-- Default Login Form (Voter) -->
         <div id="loginContainerDefault" class="login-container">
             <h2>Voter Login</h2>
-            <form action="{{ url_for('login') }}" method="post">
+            <form action="{{ url_for('voter_login') }}" method="post">
                 <input type="hidden" name="user_type" value="voter">
                 <input type="text" name="cnic" placeholder="Enter CNIC" required>
                 <input type="submit" value="Login">
@@ -169,6 +186,15 @@
                 altLogin.style.display = 'none';
             }
         }
+
+        function closeAlert() {
+            // Hide the alert box
+            const alertBox = document.getElementById('alertBox');
+            if (alertBox) {
+                alertBox.style.display = 'none';
+            }
+        }
+        
     </script>
 
 </body>

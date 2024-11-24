@@ -1,5 +1,6 @@
 from lightphe.cryptosystems.Paillier import Paillier
 from sympy import mod_inverse, gcd
+import hashlib
 
 class Ciphertext:
     def __init__(self, ciphertext: int, randomness: int):
@@ -21,7 +22,7 @@ class Ciphertext:
 
 
 class Encryption:
-    def __init__(self, public_key: int = None, private_key: int = None):
+    def __init__(self, public_key: str = None, private_key: str = None):
         """
         Initialize the Encryption class with a public and private key.
         
@@ -30,8 +31,15 @@ class Encryption:
         """
         if public_key is None and private_key is None:
             self.paillier = Paillier()
+        elif public_key is not None and private_key is None:
+            public_key_g, public_key_n = public_key.split(',')
+            keys = {"public_key": {"g": int(public_key_g), "n": int(public_key_n)}}
+            self.paillier = Paillier(keys)
         else:
-            self.paillier = Paillier({private_key: private_key, public_key: public_key})
+            public_key_g, public_key_n = public_key.split(',')
+            private_key = int(private_key)
+            keys = {"public_key": {"g": int(public_key_g), "n": int(public_key_n)}, "private_key": {"phi": private_key}}
+            self.paillier = Paillier(keys)
     
     def generate_random_key(self):
         """
@@ -74,6 +82,16 @@ class Encryption:
         plaintext = self.paillier.decrypt(ct.ciphertext)
         return plaintext
 
+    def hash(self, ct_str):
+        """
+        Hash the given ciphertext array.
+
+        :param ciphertext: The ciphertext to be hashed.
+        :return: The hash value.
+        """
+        hash_value = hashlib.sha256(ct_str.encode()).hexdigest()
+        return hash_value
+
     def serialize(self, ciphertext):
         """
         Serialize the ciphertext into a serializable format.
@@ -83,12 +101,3 @@ class Encryption:
         """
         pass
 
-
-testing = Encryption()
-
-c1 = testing.encrypt(5, 21)
-c2 = testing.encrypt(10, 3)
-
-c3 = testing.add(c1, c2)
-
-print(testing.decrypt(c3))

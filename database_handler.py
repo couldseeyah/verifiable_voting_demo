@@ -14,35 +14,34 @@ class Database:
         cnic: str,
         ballot_id: int,
         election_id: int,
-        encryption: str,
-        hash_value: str,
-        random_factor: str,
-        timestamp: datetime.datetime
+        encrypted_vote: str,
+        vote_hash: str,
+        randomness: str,
+        time: datetime.datetime
     ) -> Dict[str, Any]:
         """
         Store vote data in the votes table.
         """
-        if not timestamp.tzinfo:
-            raise ValueError("vote_time must include timezone information.")
-
         data = {
             "cnic": cnic,
             "ballot_id": ballot_id,
             "election_id": election_id,
-            "encrypted_vote": encryption,
-            "vote_hash": hash_value,
-            "randomness": random_factor,
-            "time": timestamp.isoformat(),
+            "encrypted_vote": encrypted_vote,
+            "vote_hash": vote_hash,
+            "randomness": randomness,
+            "time": time,
         }
         response = self.supabase.table("votes").insert(data).execute()
-        return response
+        return response if response else None
 
-    def retrieve_vote_data(self, cnic: str) -> Optional[Dict[str, Any]]:
+    def retrieve_vote_data(self, cnic: str, id: int) -> Optional[Dict[str, Any]]:
         """
-        Retrieve vote data from the votes table by CNIC.
+        Retrieve vote data from the votes table by CNIC and election ID.
         """
-        response = self.supabase.table("votes").select("*").eq("CNIC", cnic).execute()
-        return response.data[0] if response.data else None
+        response = self.supabase.table("votes").select("*").eq("cnic", cnic).eq("election_id", id).execute()
+        if response.data:
+            return response.data
+        return None
 
     def store_election_data(
         self,
@@ -54,7 +53,8 @@ class Database:
         results_visibility: bool,
         encrypted_sum: str,
         encrypted_randomness: str,
-        decrypted_tally: str
+        decrypted_tally: str,
+        public_key: str,
     ) -> Dict[str, Any]:
         """
         Store election data in the elections table.
@@ -69,6 +69,7 @@ class Database:
             "encrypted_sum": encrypted_sum,
             "combined_randomness": encrypted_randomness,
             "decrypted_tally": decrypted_tally,
+            "public_key": public_key,
         }
         response = self.supabase.table("elections").insert(data).execute()
         return response
@@ -78,7 +79,7 @@ class Database:
         Store candidate data in the candidates table.
         """
         # Add election_id to each candidate's data
-        data = [{"election_id": election_id, "name": candidate["name"], "cand_id": candidate["id"], "symbol": candidate["symbol"]} for candidate in candidates]
+        data = [{"election_id": election_id, "name": candidate["name"], "cand_id": candidate["id"], "symbol": candidate["symbol_url"]} for candidate in candidates]
         
         # Insert the data into the 'candidates' table via supabase
         response = self.supabase.table("candidates").insert(data).execute()
@@ -123,12 +124,16 @@ class Database:
         Retrieve most recent election and change status to False
         """
         # Retrieve the last election by ID
-        response = self.supabase.table("elections").select("*").order("id", desc=True).limit(1).execute()
+        response = self.supabase.table("elections").select("*").order("created_at", desc=True).limit(1).execute()
+
         if not response.data:
             return {"status": "error", "message": "No elections found"}
 
-        last_election = response.data[0]  # Get the most recent election
+        last_election = response.data[0]
         election_id = last_election["id"]
+
+        if last_election["ongoing"]==False:
+            return {"status": "skipped", "message": "No ongoing elections found"}
 
         # Update the status of the last election to True (ongoing)
         update_response = self.supabase.table("elections").update({"ongoing": False}).eq("id", election_id).execute()
@@ -138,9 +143,23 @@ class Database:
         """
         Retrieve election data from the elections table by election ID.
         """
-        response = self.supabase.table("elections").select("*").eq("election_id", election_id).execute()
+        response = self.supabase.table("elections").select("*").eq("id", election_id).execute()
         return response.data[0] if response.data else None
     
+    def retrieve_public_key(self, election_id: int) -> Optional[str]:
+        """
+        Retrieve the public key from the elections table by election ID.
+        """
+        response = self.supabase.table("elections").select("public_key").eq("id", election_id).execute()
+        return response.data[0]["public_key"] if response.data else None
+
+    def retrieve_candidates(self, election_id: int) -> List[Dict[str, Any]]:
+        """
+        Retrieve candidate data from the candidates table by election ID.
+        """
+        response = self.supabase.table("candidates").select("*").eq("election_id", election_id).execute()
+        return response.data if response.data else []
+        
     def get_visible_election(self) -> Optional[Dict[str, Any]]:
         """
         Retrieve the first election with visible results (results_visibility=True).

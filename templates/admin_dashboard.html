@@ -74,12 +74,28 @@
             font-size: 14px;
             color: #555;
         }
+
+        .alert-box {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+        }
+
     </style>
 </head>
 
 <body>
 
     <div class="main-container">
+        {% if message %}
+        <div class="alert-box" id="alertBox">
+            {{ message }}
+            <button class="close-btn" onclick="closeAlert()">×</button>
+        </div>
+        {% endif %}
         <h1>Admin Dashboard</h1>
         <div class="button-container">
             <!-- Button to view previous elections -->
@@ -101,6 +117,16 @@
             <p>Manage elections efficiently and securely.</p>
         </footer>
     </div>
+
+    <script>
+        function closeAlert() {
+            // Hide the alert box
+            const alertBox = document.getElementById('alertBox');
+            if (alertBox) {
+                alertBox.style.display = 'none';
+            }
+        }
+    </script>
 
 </body>
 

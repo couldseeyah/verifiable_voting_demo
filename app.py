@@ -3,9 +3,12 @@ from database_handler import Database
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timezone
+import random 
+from encryption import Encryption, Ciphertext
 
 app = Flask(__name__)
 load_dotenv()
+
 
 # use .env file for this??
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -18,15 +21,6 @@ print("Supabase URL: ", SUPABASE_URL)
 @app.route('/')
 def home():
     return render_template('login.html')
-
-@app.route('/login', methods=['POST'])
-def login():
-    user_type = request.form.get('user_type')
-    print("USER TYPE: ", user_type)  
-    if user_type == 'admin':
-        return redirect(url_for('admin_login'))
-    elif user_type == 'voter':
-        return redirect(url_for('voter_login'))
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -51,35 +45,43 @@ def voter_login():
         cnic = request.form['cnic']
 
         # First, check if the last election is ongoing
-        response = db_handler.retrieve_last_election()
-        last_election = response.data[0] 
+        last_election = db_handler.retrieve_last_election()
 
         if last_election['ongoing'] == True:
             # Retrieve vote data by cnic
-            vote_data = db_handler.retrieve_vote_data(cnic)
+            vote_data = db_handler.retrieve_vote_data(cnic, last_election['id'])
             if vote_data:
-                return render_template('receipt.html', vote_data=vote_data)
+                return render_template('receipt.html', vote_data=vote_data[0])
             else:
-                return render_template('cast_vote.html', cnic=cnic)
+                # Retrieve candidates and their symbols
+                candidates = db_handler.retrieve_candidates(last_election['id'])
+
+                ballot_id = ''.join(random.choices('0123456789', k=6))
+
+                # Pass the candidates to the cast_vote.html page
+                return render_template('cast_vote.html', cnic=cnic, candidates=candidates, ballot_id=ballot_id, election_id=last_election['id'])
 
         # If the last election is not ongoing, check if results visibility is true
         if last_election['results_visibility'] == True:
             return render_template('search_encryptions.html')
 
         # If none of the conditions are met, show the login invalid message
-        flash("No election ongoing or results visible")
-        return render_template('login.html')
+        message = "No election is ongoing, and results are not visible."
+        return render_template('login.html', message=message)
 
     # If the request method is GET, just render the login page
     return render_template('login.html')
-
 
 
 @app.route('/admin/end_election', methods=['POST'])
 def end_election():
     # End ongoing election
     response = db_handler.end_election()
-    return render_template('admin_dashboard.html')
+    print("End election response: ", response)
+    if response.data[0]['id']:
+        return render_template('admin_dashboard.html')
+    return render_template('admin_dashboard.html', message=response.get("message"))
+    
 
 @app.route('/admin/election_setup', methods=['POST'])
 def election_setup():
@@ -91,7 +93,7 @@ def election_setup():
 
 @app.route('/admin/prev_elections', methods=['POST'])
 def view_prev_elections():
-    response = db_handler.supabase.table('elections').select('*').order('created_at', desc=True).execute()
+    response = db_handler.supabase.table('elections').select('*').order('created_at', desc=False).execute()
     elections = response.data
 
     for election in elections:
@@ -134,15 +136,56 @@ def start_election():
     for i in range(1, num_candidates + 1):
         candidate_name = request.form.get(f'candidate_name_{i}')
         candidate_id = request.form.get(f'candidate_id_{i}')
-        candidate_symbol = request.form.get(f'candidate_symbol_{i}')
-        if candidate_name and candidate_symbol:
-            candidates.append({
-                'name': candidate_name,
-                'id': candidate_id,
-                'symbol': candidate_symbol
-            })
+        candidate_symbol_file = request.files.get(f'candidate_symbol_{i}')  # Get the uploaded file
 
-    #storing data in DB
+        if candidate_name and candidate_symbol_file:
+            # Upload the image to Supabase storage
+            try:
+                file_name = f"election_{election_id}_candidate_{candidate_id}_{candidate_symbol_file.filename}"
+                file_path = f"candidate_symbols/{file_name}"
+
+                # Read the file as bytes
+                file_content = candidate_symbol_file.read()
+
+                # Supabase storage upload
+                response = db_handler.supabase.storage.from_('candidate_symbols').upload(
+                    file_path, file_content, {
+                        "content-type": candidate_symbol_file.mimetype
+                    }
+                )
+
+                if response.path:
+                    # Generate public URL for the uploaded file
+                    symbol_url = db_handler.supabase.storage.from_('candidate_symbols').get_public_url(file_path)
+
+                    if symbol_url:
+                        candidates.append({
+                            'name': candidate_name,
+                            'id': candidate_id,
+                            'symbol_url': symbol_url
+                        })
+                    else:
+                        print(f"Failed to generate public URL for {file_name}")
+                        return "Error generating public URL for candidate symbol", 500
+                else:
+                    print(f"Error uploading file to Supabase: {response.status_code}")
+                    return "Error uploading candidate symbol to storage", 500
+
+            except Exception as e:
+                print(f"Exception during upload: {str(e)}")
+                return "Failed to upload candidate symbol", 500
+
+    # Initialize the encryption object
+    encryption = Encryption()
+    public_key_g = str(encryption.paillier.keys['public_key']['g'])
+    public_key_n = str(encryption.paillier.keys['public_key']['n'])
+    public_key = public_key_g + ',' + public_key_n
+
+    # Save the private key to a text file
+    with open('private_key.txt', 'w') as file:
+        file.write(str(encryption.paillier.keys['private_key']['phi']))
+
+    # Store data in the database
     response1 = db_handler.store_election_data(
         election_id=election_id,
         num_candidates=num_candidates,
@@ -153,6 +196,7 @@ def start_election():
         encrypted_sum=encrypted_sum,
         encrypted_randomness=encrypted_randomness,
         decrypted_tally=decrypted_tally,
+        public_key=public_key
     )
 
     response2 = db_handler.store_candidate_data(
@@ -177,27 +221,52 @@ def set_results_visibility():
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/vote/cast_vote/<cnic>', methods=['POST'])
-def cast_vote():
-    cnic = request.form['cnic']
+def cast_vote(cnic):
     ballot_id = int(request.form['ballot_id'])
     election_id = int(request.form['election_id'])
-    encryption = request.form['encryption']
-    hash_value = request.form['hash_value']
-    random_factor = request.form['random_factor']
-    timestamp = datetime.datetime.now(datetime.timezone.utc)
+    candidate_id = int(request.form['candidate'])
+    timestamp = datetime.now(timezone.utc)
+    timestamp = timestamp.isoformat()
+
+    candidates = db_handler.retrieve_candidates(election_id)
+
+    # Generate an array of zeros with a 1 in the position of the selected candidate
+    vote_vector = [0] * len(candidates)  # Create an array of zeros
+    vote_vector[candidate_id - 1] = 1  # Set the position of the selected candidate to 1
+
+    # get the public key
+    public_key = db_handler.retrieve_public_key(election_id)
+
+    # Initialize the encryption object with the public key
+    enc = Encryption(public_key=public_key)
+    encryption_vector = [] 
+    random_factor_vector = []
+
+    for vote in vote_vector:
+        rand = enc.generate_random_key()
+        ciphertext = enc.encrypt(vote, rand)
+        encryption_vector.append(ciphertext.ciphertext)
+        random_factor_vector.append(ciphertext.randomness)
+
+    # convert vectors to strings seperated by commas
+    encryption = ','.join(map(str, encryption_vector))
+    random_factor = ','.join(map(str, random_factor_vector))
+    hash_value = enc.hash(encryption)
 
     # Store vote data using Supabase handler
     response = db_handler.store_vote_data(
         cnic=cnic,
         ballot_id=ballot_id,
         election_id=election_id,
-        encryption=encryption,
-        hash_value=hash_value,
-        random_factor=random_factor,
-        timestamp=timestamp
+        encrypted_vote=encryption,
+        vote_hash=hash_value,
+        randomness=random_factor,
+        time=timestamp
     )
-    if response.get("status_code") == 201:
-        return "Vote successfully cast!", 200
+
+    if response:
+        vote_data = db_handler.retrieve_vote_data(cnic, election_id)
+        return render_template('receipt.html', vote_data=vote_data[0])
     else:
         return "Failed to cast vote", 500
 

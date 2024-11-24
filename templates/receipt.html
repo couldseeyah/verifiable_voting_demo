@@ -70,15 +70,15 @@
         
         <!-- Ballot ID and CNIC -->
         <div class="info">
-            BALLOT ID: 327382947<br>
-            CNIC: 12345-6789012-3
+            ELECTION ID: {{ vote_data.election_id }}<br>
+            BALLOT ID: {{ vote_data.ballot_id }}<br>
+            CNIC: {{ vote_data.cnic }}
         </div>
 
         <!-- Hash, Date, and PS# -->
         <div class="details">
-            HASH: 3278gsv278bd8sha<br>
-            2022-09-27 18:00:00.000<br>
-            PS#23890
+            HASH: {{ vote_data.vote_hash }}<br>
+            {{ vote_data.time }}<br>
         </div>
     </div>
 
