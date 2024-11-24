@@ -83,7 +83,9 @@
         <h1>Admin Dashboard</h1>
         <div class="button-container">
             <!-- Button to view previous elections -->
-            <button type="submit" class="dashboard-button">View Previous Elections</button>
+            <form action="{{ url_for('view_prev_elections') }}" method="post">
+                <button type="submit" class="dashboard-button">View Previous Elections</button>
+            </form>
             <!-- Button to start a new election -->
             <form action="{{ url_for('election_setup') }}" method="post">
                 <button type="submit" class="dashboard-button">Start New Election</button>

@@ -93,12 +93,19 @@
     <div class="container">
         <h1>Election Setup - Enter Candidate Details</h1>
 
-        <form action="/submit_election" method="post">
+        <form action="{{ url_for('start_election') }}" method="post">
+            <input type="hidden" name="election_id" value="{{ election_id }}">
+            <input type="hidden" name="num_candidates" value="{{ num_candidates }}">
+            <input type="hidden" name="start_time" value="{{ start_time }}">
+            <input type="hidden" name="end_time" value="{{ end_time }}">
             <!-- This template dynamically generates fields for each candidate -->
             {% for i in range(1, num_candidates + 1) %}
                 <div class="form-group">
                     <label for="candidate_name_{{ i }}">Candidate {{ i }} Name:</label>
                     <input type="text" id="candidate_name_{{ i }}" name="candidate_name_{{ i }}" required>
+
+                    <label for="candidate_id_{{ i }}">Candidate {{ i }} ID:</label>
+                    <input type="text" id="candidate_id_{{ i }}" name="candidate_id_{{ i }}" required>
 
                     <label for="candidate_symbol_{{ i }}">Candidate {{ i }} Symbol:</label>
                     <select id="candidate_symbol_{{ i }}" name="candidate_symbol_{{ i }}" required>

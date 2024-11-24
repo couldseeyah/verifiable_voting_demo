@@ -49,24 +49,66 @@ def admin_login():
 def voter_login():
     if request.method == 'POST':
         cnic = request.form['cnic']
-        
-        # Retrieve vote data by CNIC using Supabase handler
-        vote_data = db_handler.retrieve_vote_data(cnic)
-        if vote_data:
-            return render_template('receipt.html', vote_data=vote_data)
-        else:
-            return "No vote data found for this CNIC", 404
+
+        # First, check if the last election is ongoing
+        response = db_handler.retrieve_last_election()
+        last_election = response.data[0] 
+
+        if last_election['ongoing'] == True:
+            # Retrieve vote data by cnic
+            vote_data = db_handler.retrieve_vote_data(cnic)
+            if vote_data:
+                return render_template('receipt.html', vote_data=vote_data)
+            else:
+                return render_template('cast_vote.html', cnic=cnic)
+
+        # If the last election is not ongoing, check if results visibility is true
+        if last_election['results_visibility'] == True:
+            return render_template('search_encryptions.html')
+
+        # If none of the conditions are met, show the login invalid message
+        flash("No election ongoing or results visible")
+        return render_template('login.html')
+
+    # If the request method is GET, just render the login page
     return render_template('login.html')
+
+
 
 @app.route('/admin/end_election', methods=['POST'])
 def end_election():
     # End ongoing election
     response = db_handler.end_election()
-    return redirect(url_for('admin_dashboard'))
+    return render_template('admin_dashboard.html')
 
 @app.route('/admin/election_setup', methods=['POST'])
 def election_setup():
+    response = db_handler.supabase.table("elections").select("ongoing").execute()
+    for i in response.data:
+        if i['ongoing'] == True:
+            return "An election is already ongoing!", 403
     return render_template('election_setup.html')
+
+@app.route('/admin/prev_elections', methods=['POST'])
+def view_prev_elections():
+    response = db_handler.supabase.table('elections').select('*').order('created_at', desc=True).execute()
+    elections = response.data
+
+    for election in elections:
+        candidates_response = db_handler.supabase.table('candidates').select('name').eq('election_id', election['id']).execute()
+        candidates = candidates_response.data  # Access the 'data' attribute
+        election['candidates'] = [candidate['name'] for candidate in candidates]
+
+    return render_template('prev_elections.html', elections=elections)
+
+@app.route('/admin/election_setup/set_candidates', methods=['POST'])
+def set_candidates():
+    # send all data to the set_candidates.html page
+    election_id = request.form['election_id']   
+    num_candidates = int(request.form['num_candidates'])
+    start_time = request.form['start_time']
+    end_time = request.form['end_time']
+    return render_template('candidate_details.html', num_candidates=num_candidates, election_id=election_id, start_time=start_time, end_time=end_time)
 
 @app.route('/admin/start_election', methods=['POST'])
 def start_election():
@@ -85,9 +127,23 @@ def start_election():
     start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').time()
     end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M').time()
 
+    # Initialize a list to store candidate details
+    candidates = []
+
+    # Loop through the dynamically generated candidate fields
+    for i in range(1, num_candidates + 1):
+        candidate_name = request.form.get(f'candidate_name_{i}')
+        candidate_id = request.form.get(f'candidate_id_{i}')
+        candidate_symbol = request.form.get(f'candidate_symbol_{i}')
+        if candidate_name and candidate_symbol:
+            candidates.append({
+                'name': candidate_name,
+                'id': candidate_id,
+                'symbol': candidate_symbol
+            })
 
     #storing data in DB
-    response = db_handler.store_election_data(
+    response1 = db_handler.store_election_data(
         election_id=election_id,
         num_candidates=num_candidates,
         start_time=start_time,
@@ -96,9 +152,15 @@ def start_election():
         results_visibility=results_visibility,
         encrypted_sum=encrypted_sum,
         encrypted_randomness=encrypted_randomness,
-        decrypted_tally=decrypted_tally
+        decrypted_tally=decrypted_tally,
     )
-    if response.data:
+
+    response2 = db_handler.store_candidate_data(
+        election_id=election_id,
+        candidates=candidates
+    )
+
+    if response1.data and response2.data:
         response = db_handler.supabase.table("elections").select("*").execute()
         elections = response.data
         last_election = elections[-1] if elections else None

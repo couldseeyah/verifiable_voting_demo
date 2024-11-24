@@ -72,6 +72,19 @@ class Database:
         }
         response = self.supabase.table("elections").insert(data).execute()
         return response
+
+    def store_candidate_data(self, election_id: int, candidates: List[dict]) -> Dict[str, Any]:
+        """
+        Store candidate data in the candidates table.
+        """
+        # Add election_id to each candidate's data
+        data = [{"election_id": election_id, "name": candidate["name"], "cand_id": candidate["id"], "symbol": candidate["symbol"]} for candidate in candidates]
+        
+        # Insert the data into the 'candidates' table via supabase
+        response = self.supabase.table("candidates").insert(data).execute()
+        
+        # Return the response from the insertion operation
+        return response
     
     def get_votes_by_election(self, election_id: int) -> List[Dict[str, Any]]:
         """
@@ -99,7 +112,8 @@ class Database:
         return {"status": "skipped", "message": f"Election ID {election_id} is already ongoing; no update made"}
 
     def retrieve_last_election(self):
-        response = self.supabase.table("elections").select("*").order("id", desc=True).limit(1).execute()
+        response = self.supabase.table('elections').select('*').order('created_at', desc=True).limit(1).execute()
+
         if not response.data:
             return {"status": "error", "message": "No elections found"}
         return response.data[0]
@@ -108,7 +122,7 @@ class Database:
         """
         Retrieve most recent election and change status to False
         """
-         # Retrieve the last election by ID
+        # Retrieve the last election by ID
         response = self.supabase.table("elections").select("*").order("id", desc=True).limit(1).execute()
         if not response.data:
             return {"status": "error", "message": "No elections found"}
@@ -118,10 +132,7 @@ class Database:
 
         # Update the status of the last election to True (ongoing)
         update_response = self.supabase.table("elections").update({"ongoing": False}).eq("id", election_id).execute()
-        if update_response.status_code == 200:
-            return {"status": "success", "message": f"Election ID {election_id} ended successfully"}
-        else:
-            return {"status": "error", "message": f"Failed to end election ID {election_id}"}
+        return update_response
 
     def retrieve_election_data(self, election_id: int) -> Optional[Dict[str, Any]]:
         """

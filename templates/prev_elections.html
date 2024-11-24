@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previous Elections</title>
+    <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Centering the dashboard */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        /* Styling the main container */
+        .main-container {
+            text-align: center;
+            width: 800px;
+        }
+
+        /* Heading styling */
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Button container styling */
+        .button-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Button styling */
+        .dashboard-button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            color: #fff;
+            background-color: #3a61e3;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .dashboard-button:hover {
+            background-color: #22408a;
+        }
+
+        /* Link styling */
+        a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        /* Footer link styling */
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-container">
+        <h1>Previous Election Data</h1>
+        <div class="button-container">
+            {% if elections %}
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Number of Candidates</th>
+                        <th>Date</th>
+                        <th>Status (Ongoing or Not)</th>
+                        <th>Results Visibility</th>
+                        <th>Encrypted Result</th>
+                        <th>Decrypted Result</th>
+                        <th>Combined Randomness</th>
+                        <th>Candidate Names</th>  <!-- New column for Candidate Names -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for election in elections %}
+                    <tr>
+                        <td>{{ election.id }}</td>
+                        <td>{{ election.num_candidates }}</td>
+                        <td>{{ election.start_time }} - {{ election.end_time }}</td>
+                        <td>{{ election.ongoing }}</td>
+                        <td>{{ election.results_visibility }}</td>
+                        <td>{{ election.encrypted_sum }}</td>
+                        <td>{{ election.decrypted_tally }}</td>
+                        <td>{{ election.combined_randomness }}</td>
+                        <td>
+                            {% if election.candidates %}
+                                {{ election.candidates | join(', ') }}  <!-- Render the candidate names -->
+                            {% else %}
+                                No candidates available
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No previous elections found.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+</body>
+
+</html>
