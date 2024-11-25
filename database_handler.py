@@ -127,6 +127,16 @@ class Database:
         except Exception as e:
             print(f"Error retrieving candidates for election ID {election_id}: {e}")
             return []
+    
+    def set_elections_visibility(self, election_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Set the visibility of all elections to False, except the one with the given election ID.
+        """
+        # Update all elections to False except the one with the given election ID
+        response = self.supabase.table("elections").update({"results_visibility": False}).neq("id", election_id).execute()
+        if response.data:
+            return response
+        return None
 
     def end_election(self) -> Optional[Dict[str, Any]]:
         """
@@ -146,7 +156,7 @@ class Database:
 
         # Update the status of the last election to False (completed)
         update_response = self.supabase.table("elections").update({"ongoing": False}).eq("id", election_id).execute()
-        return update_response
+        return update_response.data
 
     def retrieve_election_data(self, election_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -168,6 +178,21 @@ class Database:
                 return []
         except Exception as e:
             print(f"Error retrieving votes for election ID {election_id}: {e}")
+            return []
+
+    def get_votes_enc_by_election(self, election_id: int) -> list:
+        """
+        Retrieve all encrypted votes for a given election ID.
+        """
+        try:
+            response = self.supabase.table("votes").select("encrypted_vote", count="exact").eq("election_id", election_id).execute()
+            if response.data:
+                return response.data  # List of encrypted votes
+            else:
+                print(f"No encrypted votes found for election ID {election_id}.")
+                return []
+        except Exception as e:
+            print(f"Error retrieving encrypted votes for election ID {election_id}: {e}")
             return []
         
     def get_vote_by_ballot_id(self, ballot_id: str) -> dict:

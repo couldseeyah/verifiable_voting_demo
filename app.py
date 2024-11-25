@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
+import io
 from database_handler import Database
 from dotenv import load_dotenv
 import os
+import zipfile
 from datetime import datetime, timezone
 import random 
 from encryption import Encryption, Ciphertext
@@ -78,59 +80,61 @@ def voter_login():
 def end_election():
     response = db_handler.end_election()
     print("End Election Response: ", response)
-    if response.data[0]['id']: #ongoing election ended
-        election_id = response.data[0]['id']
-        election_votes = db_handler.get_votes_by_election(election_id) #list of records (cnic, vote, randomness, etc for each vote)
 
-        #Read votes into Ciphertext Objects
-        vote_strings = [vote_record['encrypted_vote'] for vote_record in election_votes] #['a,b,c', 'd,e,f']
-        randomness_strings = [vote_record['randomness'] for vote_record in election_votes] #['ra,rb,rc', 'rd,re,rf']
-        encrypted_votes = [] #[[Ara,Brb, Crc], [Drd, Ere, Frf]]
-        for vote, randomness in zip(vote_strings, randomness_strings): 
-            string_vote_vector = [item.strip() for item in vote.split(',')] #[a, b, c]
-            randomness_vector = [item.strip() for item in randomness.split(',')] #[ra, rb, rc]
-            encrypted_vote_vector = [] #[Ara, Brb, Crc]
-            for i in range(len(string_vote_vector)): 
-                encrypted_vote = Ciphertext(int(string_vote_vector[i]), int(randomness_vector[i])) #C(a, ra), C(b, rb), C(c, rc)
-                encrypted_vote_vector.append(encrypted_vote)
-            encrypted_votes.append(encrypted_vote_vector)
-        
-        with open(private_key_file, 'r') as file:
-            priv_key = file.read().strip()  # Use .strip() to remove leading/trailing whitespace
-        
-        encryption_handler = Encryption(response.data[0]['public_key'], priv_key)
+    if "message" in response:
+        return render_template('admin_dashboard.html', message=response.get("message")) #No ongoing election
 
-        #Homomorphic addition
-        sum = encrypted_votes[0] #will contain encrypted result
-        encrypted_votes = encrypted_votes[1:]
-        for vote in encrypted_votes:
-            for i in range(len(vote)): 
-                sum[i] = encryption_handler.add(sum[i], vote[i])
+    election_id = response[0]['id']
+    election_votes = db_handler.get_votes_by_election(election_id) #list of records (cnic, vote, randomness, etc for each vote)
 
-        #decrypt result:
-        decrypted_result = [] #will contain decrypted result
-        for vote in sum: 
-            plaintext = encryption_handler.decrypt(vote)
-            decrypted_result.append(str(plaintext))
-        print("DECRYPTED RESULT: ", decrypted_result)
-        #convert encrypted and decrypted results to string representations
-        decrypted_result_string = ','.join(decrypted_result)
-        encrypted_result = []
-        combined_randomness = []
-        for vote in sum: 
-            encrypted_result.append(str(vote.ciphertext))
-            combined_randomness.append(str(vote.randomness))
-        
-        encrypted_result_string = ','.join(encrypted_result)
-        combined_randomness_string = ','.join(combined_randomness)
-        response = db_handler.update_election_results(election_id, encrypted_result_string, combined_randomness_string, decrypted_result_string, True)
-        if not response.data[0]['ongoing']:
-            message = ("Current election ended successfully.")
-        else:
-            message = ("Error ending current election.")
-        return render_template('admin_dashboard.html', message=message)
+    #Read votes into Ciphertext Objects
+    vote_strings = [vote_record['encrypted_vote'] for vote_record in election_votes] #['a,b,c', 'd,e,f']
+    randomness_strings = [vote_record['randomness'] for vote_record in election_votes] #['ra,rb,rc', 'rd,re,rf']
+    encrypted_votes = [] #[[Ara,Brb, Crc], [Drd, Ere, Frf]]
+    for vote, randomness in zip(vote_strings, randomness_strings): 
+        string_vote_vector = [item.strip() for item in vote.split(',')] #[a, b, c]
+        randomness_vector = [item.strip() for item in randomness.split(',')] #[ra, rb, rc]
+        encrypted_vote_vector = [] #[Ara, Brb, Crc]
+        for i in range(len(string_vote_vector)): 
+            encrypted_vote = Ciphertext(int(string_vote_vector[i]), int(randomness_vector[i])) #C(a, ra), C(b, rb), C(c, rc)
+            encrypted_vote_vector.append(encrypted_vote)
+        encrypted_votes.append(encrypted_vote_vector)
+    
+    with open(private_key_file, 'r') as file:
+        priv_key = file.read().strip()  # Use .strip() to remove leading/trailing whitespace
+    
+    encryption_handler = Encryption(response.data[0]['public_key'], priv_key)
 
-    return render_template('admin_dashboard.html', message=response.get("message")) #No ongoing election
+    #Homomorphic addition
+    sum = encrypted_votes[0] #will contain encrypted result
+    encrypted_votes = encrypted_votes[1:]
+    for vote in encrypted_votes:
+        for i in range(len(vote)): 
+            sum[i] = encryption_handler.add(sum[i], vote[i])
+
+    #decrypt result:
+    decrypted_result = [] #will contain decrypted result
+    for vote in sum: 
+        plaintext = encryption_handler.decrypt(vote)
+        decrypted_result.append(str(plaintext))
+    print("DECRYPTED RESULT: ", decrypted_result)
+    #convert encrypted and decrypted results to string representations
+    decrypted_result_string = ','.join(decrypted_result)
+    encrypted_result = []
+    combined_randomness = []
+    for vote in sum: 
+        encrypted_result.append(str(vote.ciphertext))
+        combined_randomness.append(str(vote.randomness))
+    
+    encrypted_result_string = ','.join(encrypted_result)
+    combined_randomness_string = ','.join(combined_randomness)
+    response = db_handler.update_election_results(election_id, encrypted_result_string, combined_randomness_string, decrypted_result_string, True)
+    if not response.data[0]['ongoing']:
+        message = ("Current election ended successfully.")
+    else:
+        message = ("Error ending current election.")
+    return render_template('admin_dashboard.html', message=message)
+
     
 
 @app.route('/admin/election_setup', methods=['POST'])
@@ -256,6 +260,7 @@ def start_election():
 
     if response1.data and response2.data:
         response = db_handler.supabase.table("elections").select("*").execute()
+        res = db_handler.update_result_visibility(election_id)
         elections = response.data
         last_election = elections[-1] if elections else None
         return render_template('admin_dashboard.html', elections=elections, last_election=last_election)
@@ -359,6 +364,35 @@ def results():
         results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
         return render_template('results.html', last_election=last_election, results=results)
     return "No results to display", 403
+
+
+@app.route('/download_encryptions', methods=['GET'])
+def download_encryptions():
+    last_election = db_handler.get_visible_election()    
+    if last_election:
+        encrypted_votes = db_handler.get_votes_enc_by_election(last_election['id'])
+
+        # Create a zip file in memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add each encrypted vote as a text file to the zip
+            for i, vote in enumerate(encrypted_votes):
+                file_name = f'vote_{i + 1}.txt'
+                zip_file.writestr(file_name, vote['encrypted_vote'])
+        
+        # Seek to the beginning of the BytesIO buffer
+        zip_buffer.seek(0)
+
+        # Send the zip file as a downloadable response
+        zip_file_name = "encrypted_votes.zip"
+        return send_file(zip_buffer,
+                         as_attachment=True,
+                         download_name=zip_file_name,
+                         mimetype='application/zip')
+
+        return redirect(url_for('results'))
+
+    return "No visible results", 403    
 
 if __name__ == '__main__':
     app.run(debug=True)
