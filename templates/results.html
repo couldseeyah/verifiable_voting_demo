@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Election Results</title>
     <style>
-        /* Basic styling */
+        /* Styling as provided */
         * {
             margin: 0;
             padding: 0;
@@ -21,37 +21,34 @@
             background-color: #f0f2f5;
             color: #333;
             padding: 20px;
-            margin: 0;
         }
 
         .container {
             display: flex;
             flex-direction: row;
-            gap: 30px; /* Increase the gap between the cards */
+            gap: 30px;
             width: 100%;
-            max-width: 1200px; /* Increase max-width for larger cards */
+            max-width: 1200px;
             justify-content: center;
             align-items: stretch;
         }
 
         .card {
             background-color: #ffffff;
-            padding: 30px; /* Increase padding for larger content area */
+            padding: 30px;
             border-radius: 8px;
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
         }
 
         .card.tally {
-            flex: 0 0 65%; /* Maintain 65% width for the Tally card */
-            max-width: 780px; /* Increase max-width for the Tally card */
+            flex: 0 0 65%;
+            max-width: 780px;
         }
 
         .card.audit {
-            flex: 0 0 35%; /* Maintain 35% width for the Audit card */
-            max-width: 420px; /* Increase max-width for the Audit card */
+            flex: 0 0 35%;
+            max-width: 420px;
         }
-
-
 
         h2 {
             font-size: 20px;
@@ -96,55 +93,135 @@
         button:hover {
             background-color: #336cd1;
         }
+
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4); /* Black background with opacity */
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            width: 50%;
+            max-height: 50%;
+            overflow-y: auto;
+            text-align: center;
+            word-wrap: break-word; /* Wrap long text */
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <!-- Election Tally Card -->
-    <div class="card">
+    <div class="card tally">
         <h2>Elections Tally</h2>
-        
+
+        <!-- Button for Encrypted Total -->
         <div class="result-item">
             <span class="label">Encrypted Total:</span>
-            <span class="value">2345</span> <!-- Dummy encrypted total -->
+            <button onclick="showModal('encrypted-sum')">View Encrypted Sum</button>
         </div>
 
+        
         <div class="result-item">
             <span class="label">Decrypted Total:</span>
-            <span class="value">2310</span> <!-- Dummy decrypted total -->
+            <span class="value">{{ last_election.decrypted_tally }}</span> <!-- Dummy decrypted total -->
         </div>
 
         <!-- Candidate vote counts -->
+        {% for result in results %}
         <div class="result-item">
-            <span class="label">Candidate A:</span>
-            <span class="value">1200 votes</span>
+            <span class="label">{{ result.name }}:</span>
+            <span class="value">{{ result.votes }}</span>
         </div>
-        <div class="result-item">
-            <span class="label">Candidate B:</span>
-            <span class="value">850 votes</span>
-        </div>
-        <div class="result-item">
-            <span class="label">Candidate C:</span>
-            <span class="value">260 votes</span>
-        </div>
+        {% endfor %}
     </div>
 
     <!-- Audit Results Card -->
-    <div class="card">
+    <div class="card audit">
         <h2>Audit Results</h2>
-        
+
+        <!-- Button for Randomness -->
         <div class="result-item">
             <span class="label">Randomness:</span>
-            <span class="value">0.78329</span> <!-- Dummy randomness value -->
+            <button onclick="showModal('randomness')">View Randomness</button>
         </div>
 
-        <!-- Button to perform backend operation and show results -->
-        <form action="/perform_audit" method="post">
-            <button type="submit">Run Audit Operation</button>
-        </form>
+         <!-- Button to perform backend operation and show results -->
+        <div>
+            <form action="/perform_audit" method="post">
+                <button type="submit">Run Audit Operation</button>
+            </form>
+        </div>
+
+        <div class="result-item">
+            <form action="/search_encryptions" method="get">
+                <button type="submit" class="search-encryptions-btn">Search Encryptions</button>
+            </form>
+        </div>
     </div>
 </div>
+
+<!-- Modal Structure -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <p id="modal-text"></p>
+    </div>
+</div>
+
+<script>
+    // Encrypted sum and randomness values (replace these with dynamic values if needed)
+    const encryptedSum = "{{ last_election['encrypted_sum'] }}";
+    const randomness = "{{ last_election['combined_randomness'] }}";
+
+    // Show modal with the appropriate value
+    function showModal(field) {
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modal-text');
+
+        if (field === 'encrypted-sum') {
+            modalText.textContent = encryptedSum;
+        } else if (field === 'randomness') {
+            modalText.textContent = randomness;
+        }
+
+        modal.style.display = 'block';
+    }
+
+    // Close the modal
+    function closeModal() {
+        const modal = document.getElementById('modal');
+        modal.style.display = 'none';
+    }
+</script>
 
 </body>
 </html>

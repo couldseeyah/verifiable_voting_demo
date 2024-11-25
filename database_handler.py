@@ -86,13 +86,6 @@ class Database:
         
         # Return the response from the insertion operation
         return response
-    
-    def get_votes_by_election(self, election_id: int) -> List[Dict[str, Any]]:
-        """
-        Retrieve all votes for a given election ID.
-        """
-        response = self.supabase.table("votes").select("*").eq("election_id", election_id).execute()
-        return response.data if response.data else []
 
     def update_result_visibility(self, election_id: int, status: bool) -> Optional[Dict[str, Any]]:
         election_data = self.retrieve_election_data(election_id)
@@ -119,6 +112,22 @@ class Database:
             return {"status": "error", "message": "No elections found"}
         return response.data[0]
 
+
+    def retrieve_candidates(self, election_id: int) -> list:
+        """
+        Retrieve all candidates for a given election ID from the candidates table.
+        """
+        try:
+            response = self.supabase.table("candidates").select("*", count='exact').eq("election_id", election_id).execute()
+            if response.data:
+                return response.data  # List of candidates
+            else:
+                print(f"No candidates found for election ID {election_id}.")
+                return []
+        except Exception as e:
+            print(f"Error retrieving candidates for election ID {election_id}: {e}")
+            return []
+
     def end_election(self) -> Optional[Dict[str, Any]]:
         """
         Retrieve most recent election and change status to False
@@ -135,7 +144,7 @@ class Database:
         if last_election["ongoing"]==False:
             return {"status": "skipped", "message": "No ongoing elections found"}
 
-        # Update the status of the last election to True (ongoing)
+        # Update the status of the last election to False (completed)
         update_response = self.supabase.table("elections").update({"ongoing": False}).eq("id", election_id).execute()
         return update_response
 
@@ -145,7 +154,71 @@ class Database:
         """
         response = self.supabase.table("elections").select("*").eq("id", election_id).execute()
         return response.data[0] if response.data else None
-    
+
+    def get_votes_by_election(self, election_id: int) -> list:
+        """
+        Retrieve all votes for a given election ID.
+        """
+        try:
+            response = self.supabase.table("votes").select("*", count="exact").eq("election_id", election_id).execute()
+            if response.data:
+                return response.data  # List of votes
+            else:
+                print(f"No votes found for election ID {election_id}.")
+                return []
+        except Exception as e:
+            print(f"Error retrieving votes for election ID {election_id}: {e}")
+            return []
+        
+    def get_vote_by_ballot_id(self, ballot_id: str) -> dict:
+        """
+        Retrieve a vote receipt by ballot ID.
+        """
+        try:
+            response = self.supabase.table("votes").select("*").eq("ballot_id", ballot_id).execute()
+            if response.data:
+                return response.data[0]  # Return the first matching vote record
+            return None
+        except Exception as e:
+            print(f"Error fetching vote by ballot ID {ballot_id}: {e}")
+            return None
+
+
+    def update_election_results(
+        self,
+        election_id: int,
+        encrypted_sum: str,
+        combined_randomness: str,
+        decrypted_tally: str,
+        results_visibility: bool
+    ) -> dict:
+        """
+        Updates the election row with the given election ID to update
+        encrypted_sum, combined_randomness, decrypted_tally, and results_visibility..
+        """
+        try:
+            # Create the update data dictionary
+            update_data = {
+                "encrypted_sum": encrypted_sum,
+                "combined_randomness": combined_randomness,
+                "decrypted_tally": decrypted_tally,
+                "results_visibility": results_visibility
+            }
+
+            # Perform the update operation
+            response = self.supabase.table("elections").update(update_data).eq("id", election_id).execute()
+
+            # Check and return the response
+            if response.data:
+                print(f"Election ID {election_id} updated successfully.")
+            else:
+                print(f"No rows updated for Election ID {election_id}.")
+            return response
+        except Exception as e:
+            print(f"Error updating election ID {election_id}: {e}")
+            return {"error": str(e)}
+
+
     def retrieve_public_key(self, election_id: int) -> Optional[str]:
         """
         Retrieve the public key from the elections table by election ID.

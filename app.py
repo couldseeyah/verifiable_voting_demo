@@ -14,7 +14,8 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 db_handler = Database(SUPABASE_URL, SUPABASE_KEY)
-
+# encryption_handler = Encryption()
+private_key_file = 'private_key.txt'
 print("Supabase URL: ", SUPABASE_URL)
 
 # starting page for the voting app
@@ -63,7 +64,7 @@ def voter_login():
 
         # If the last election is not ongoing, check if results visibility is true
         if last_election['results_visibility'] == True:
-            return render_template('search_encryptions.html')
+            return redirect(url_for('results'))
 
         # If none of the conditions are met, show the login invalid message
         message = "No election is ongoing, and results are not visible."
@@ -75,12 +76,61 @@ def voter_login():
 
 @app.route('/admin/end_election', methods=['POST'])
 def end_election():
-    # End ongoing election
     response = db_handler.end_election()
-    print("End election response: ", response)
-    if response.data[0]['id']:
-        return render_template('admin_dashboard.html')
-    return render_template('admin_dashboard.html', message=response.get("message"))
+    print("End Election Response: ", response)
+    if response.data[0]['id']: #ongoing election ended
+        election_id = response.data[0]['id']
+        election_votes = db_handler.get_votes_by_election(election_id) #list of records (cnic, vote, randomness, etc for each vote)
+
+        #Read votes into Ciphertext Objects
+        vote_strings = [vote_record['encrypted_vote'] for vote_record in election_votes] #['a,b,c', 'd,e,f']
+        randomness_strings = [vote_record['randomness'] for vote_record in election_votes] #['ra,rb,rc', 'rd,re,rf']
+        encrypted_votes = [] #[[Ara,Brb, Crc], [Drd, Ere, Frf]]
+        for vote, randomness in zip(vote_strings, randomness_strings): 
+            string_vote_vector = [item.strip() for item in vote.split(',')] #[a, b, c]
+            randomness_vector = [item.strip() for item in randomness.split(',')] #[ra, rb, rc]
+            encrypted_vote_vector = [] #[Ara, Brb, Crc]
+            for i in range(len(string_vote_vector)): 
+                encrypted_vote = Ciphertext(int(string_vote_vector[i]), int(randomness_vector[i])) #C(a, ra), C(b, rb), C(c, rc)
+                encrypted_vote_vector.append(encrypted_vote)
+            encrypted_votes.append(encrypted_vote_vector)
+        
+        with open(private_key_file, 'r') as file:
+            priv_key = file.read().strip()  # Use .strip() to remove leading/trailing whitespace
+        
+        encryption_handler = Encryption(response.data[0]['public_key'], priv_key)
+
+        #Homomorphic addition
+        sum = encrypted_votes[0] #will contain encrypted result
+        encrypted_votes = encrypted_votes[1:]
+        for vote in encrypted_votes:
+            for i in range(len(vote)): 
+                sum[i] = encryption_handler.add(sum[i], vote[i])
+
+        #decrypt result:
+        decrypted_result = [] #will contain decrypted result
+        for vote in sum: 
+            plaintext = encryption_handler.decrypt(vote)
+            decrypted_result.append(str(plaintext))
+        print("DECRYPTED RESULT: ", decrypted_result)
+        #convert encrypted and decrypted results to string representations
+        decrypted_result_string = ','.join(decrypted_result)
+        encrypted_result = []
+        combined_randomness = []
+        for vote in sum: 
+            encrypted_result.append(str(vote.ciphertext))
+            combined_randomness.append(str(vote.randomness))
+        
+        encrypted_result_string = ','.join(encrypted_result)
+        combined_randomness_string = ','.join(combined_randomness)
+        response = db_handler.update_election_results(election_id, encrypted_result_string, combined_randomness_string, decrypted_result_string, True)
+        if not response.data[0]['ongoing']:
+            message = ("Current election ended successfully.")
+        else:
+            message = ("Error ending current election.")
+        return render_template('admin_dashboard.html', message=message)
+
+    return render_template('admin_dashboard.html', message=response.get("message")) #No ongoing election
     
 
 @app.route('/admin/election_setup', methods=['POST'])
@@ -232,6 +282,7 @@ def cast_vote(cnic):
 
     # Generate an array of zeros with a 1 in the position of the selected candidate
     vote_vector = [0] * len(candidates)  # Create an array of zeros
+    print("length of candidates: ", len(candidates))
     vote_vector[candidate_id - 1] = 1  # Set the position of the selected candidate to 1
 
     # get the public key
@@ -277,16 +328,36 @@ def search_encryptions():
     if visible_election:
         # Fetch votes for the visible election using the DB handler
         votes = db_handler.get_votes_by_election(visible_election['id'])
-        return render_template('search_encryptions.html', votes=votes)
+        return render_template('search_votes.html', votes=votes)
     return "No visible results", 403
+
+@app.route('/search-vote', methods=['GET'])
+def search_vote():
+    ballot_id = request.args.get('vote_id')  # Get the ballot_id from the form
+    vote_result = None
+
+    if ballot_id:
+        # Fetch the vote record from the database using the ballot_id
+        vote_result = db_handler.get_vote_by_ballot_id(ballot_id)
+
+    return render_template(
+        'search_votes.html',
+        vote_result=vote_result,
+        ballot_id=ballot_id,
+        ballot_id_provided=True  # Indicates whether a search was performed
+    )
 
 
 @app.route('/results', methods=['GET'])
 def results():
     last_election = db_handler.retrieve_last_election()
+    print("Last election: ", last_election)
     if last_election:
-        results = last_election.decrypted_tally
-        return render_template('results.html', results=results)
+        candidates = db_handler.retrieve_candidates(last_election['id'])
+        decrypted_tally = last_election['decrypted_tally'].split(',')
+        #combining candiate names and votes
+        results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
+        return render_template('results.html', last_election=last_election, results=results)
     return "No results to display", 403
 
 if __name__ == '__main__':
