@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from database_handler import Database
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timezone
 import random 
 from encryption import Encryption, Ciphertext
+import string
+import re
 
 app = Flask(__name__)
 load_dotenv()
@@ -320,6 +322,40 @@ def cast_vote(cnic):
         return render_template('receipt.html', vote_data=vote_data[0])
     else:
         return "Failed to cast vote", 500
+    
+
+@app.route('/perform_audit', methods=['POST'])
+def perform_audit():
+    last_election = db_handler.retrieve_last_election()
+    if not last_election:
+        return "No election data found", 404
+
+    decrypted_tally = last_election['decrypted_tally'].split(',')  # Split tally string into list
+    public_key = last_election['public_key'] # Assuming the public key is stored in the election record
+    encrypted_tally = last_election['encrypted_sum']
+    combined_randomness = last_election['combined_randomness'].lstrip(string.punctuation)
+    encryption_handler = Encryption(public_key=public_key)
+    combined_randomness = re.sub(r'[^\d]', '', combined_randomness)
+
+    # Convert to an integer
+    try:
+        combined_randomness = int(combined_randomness)
+    except ValueError as e:
+        print(f"Error converting combined_randomness to int: {e}")
+        raise ValueError("Invalid combined_randomness: must be numeric.")
+
+    # Re-encrypt the decrypted tally using the public key
+    re_encrypted_tally = [encryption_handler.encrypt(int(vote), int(combined_randomness)) for vote in decrypted_tally] #consists of ciphertext ojects
+
+    re_encrypted_strings = [str(encrypted.ciphertext) for encrypted in re_encrypted_tally] #consists of ciphertext only
+    re_encrypted_strings = ','.join(re_encrypted_strings)
+    # Return all data as JSON
+    return jsonify({
+        'decrypted_tally': decrypted_tally,
+        'public_key': public_key,
+        'encrypted_tally': encrypted_tally,
+        're_encrypted_tally': re_encrypted_strings
+    })
 
 @app.route('/search_encryptions', methods=['GET'])
 def search_encryptions():

@@ -175,11 +175,10 @@
         </div>
 
          <!-- Button to perform backend operation and show results -->
-        <div>
-            <form action="/perform_audit" method="post">
-                <button type="submit">Run Audit Operation</button>
-            </form>
+         <div>
+            <button id="run-audit-btn" class="submit-button" onclick="runAudit()">Run Audit Operation</button>
         </div>
+             
 
         <div class="result-item">
             <form action="/search_encryptions" method="get">
@@ -198,9 +197,72 @@
 </div>
 
 <script>
-    // Encrypted sum and randomness values (replace these with dynamic values if needed)
-    const encryptedSum = "{{ last_election['encrypted_sum'] }}";
-    const randomness = "{{ last_election['combined_randomness'] }}";
+    // // Encrypted sum and randomness values (replace these with dynamic values if needed)
+    // const encryptedSum = "{{ last_election['encrypted_sum'] }}";
+    // const randomness = "{{ last_election['combined_randomness'] }}";
+    // let reEncryptedTally = [];  // Placeholder for re-encrypted tally
+
+
+    // Function to handle the audit operation
+    function runAudit() {
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modal-text');
+        const runAuditButton = document.getElementById('run-audit-btn');
+
+        // Disable the button to prevent multiple clicks
+        runAuditButton.disabled = true;
+        runAuditButton.textContent = "Running Audit...";
+
+        // Perform the audit operation using an AJAX request
+        fetch('/perform_audit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                runAuditButton.disabled = false;
+                runAuditButton.textContent = "Run Audit Operation";
+                return;
+            }
+
+            // Prepare modal content
+            const decryptedTally = data.decrypted_tally.join(', ');
+            const publicKey = data.public_key;
+            const encryptedTally = data.encrypted_tally;
+            const reEncryptedTally = data.re_encrypted_tally.join(', ');
+
+            modalText.innerHTML = `
+                <h3>Audit Results</h3>
+                <p><strong>Decrypted Tally:</strong> ${decryptedTally}</p>
+                <p><strong>Public Key:</strong> ${publicKey}</p>
+                <p><strong>Encrypted Tally:</strong> ${encryptedTally}</p>
+                <p><strong>Re-Encrypted Tally:</strong><br>${reEncryptedTally.replace(/,/g, '<br>')}</p>
+            `;
+
+            // Show the modal
+            modal.style.display = 'block';
+
+            // Enable the button again
+            runAuditButton.disabled = false;
+            runAuditButton.textContent = "Run Audit Operation";
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while running the audit.');
+            runAuditButton.disabled = false;
+            runAuditButton.textContent = "Run Audit Operation";
+        });
+    }
+
+    // Close the modal
+    function closeModal() {
+        const modal = document.getElementById('modal');
+        modal.style.display = 'none';
+    }
 
     // Show modal with the appropriate value
     function showModal(field) {
