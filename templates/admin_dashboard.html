@@ -62,6 +62,23 @@
             background-color: #22408a;
         }
 
+        .logout-button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            color: #fff;
+            background-color: #ff4c4c;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .logout-button:hover {
+            background-color: #cc3b3b;
+        }
+
         /* Link styling */
         a {
             text-decoration: none;
@@ -83,7 +100,6 @@
             border: 1px solid #f5c6cb;
             border-radius: 4px;
         }
-
     </style>
 </head>
 
@@ -112,6 +128,10 @@
                 <button type="submit" class="dashboard-button">End Current Election</button>
             </form>
         </div>
+        <!-- Logout Button -->
+        <form action="{{ url_for('voter_login') }}" method="get">
+            <button type="submit" class="logout-button">Logout</button>
+        </form>
 
         <footer>
             <p>Manage elections efficiently and securely.</p>

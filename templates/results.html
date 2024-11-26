@@ -15,6 +15,7 @@
 
         body {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
@@ -138,11 +139,35 @@
             text-decoration: none;
             cursor: pointer;
         }
+
+        /* Styling for bottom buttons */
+        .bottom-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .logout-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #ff4c4c;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #cc3b3b;
+        }
     </style>
 </head>
 
 <body>
-
     <div class="container">
         <!-- Election Tally Card -->
         <div class="card tally">
@@ -156,10 +181,9 @@
                 <button onclick="showModal('encrypted-sum')">View Encrypted Sum</button>
             </div>
 
-
             <div class="result-item">
                 <span class="label">Decrypted Total:</span>
-                <span class="value">{{ last_election.decrypted_tally }}</span> <!-- Dummy decrypted total -->
+                <span class="value">{{ last_election.decrypted_tally }}</span>
             </div>
 
             <!-- Candidate vote counts -->
@@ -182,23 +206,18 @@
             </div>
 
             <!-- Button to perform backend operation and show results -->
-            <div>
-                <form action="/perform_audit" method="post">
-                    <button type="submit">Run Audit Operation</button>
-                </form>
-            </div>
-
-            <div class="result-item">
-                <form action="/search_encryptions" method="get">
-                    <button type="submit" class="search-encryptions-btn">Search Encryptions</button>
-                </form>
-            </div>
-
-            <div class="result-item">
-                <form action="/download_encryptions" method="get">
-                    <button type="submit" class="search-decryptions-btn">Download All Encrypted Votes</button>
-                </form>
+            <button onclick="showModal('audit-results')">Run Audit Operation</button>
         </div>
+    </div>
+
+    <!-- Bottom Buttons -->
+    <div class="bottom-buttons">
+        <form action="/search_encryptions" method="get">
+            <button type="submit">Search Encryptions</button>
+        </form>
+        <form action="/logout" method="get">
+            <button type="submit" class="logout-button">Logout</button>
+        </form>
     </div>
 
     <!-- Modal Structure -->
@@ -209,104 +228,59 @@
         </div>
     </div>
 
-<script>
-    // // Encrypted sum and randomness values (replace these with dynamic values if needed)
-    // const encryptedSum = "{{ last_election['encrypted_sum'] }}";
-    // const randomness = "{{ last_election['combined_randomness'] }}";
-    // let reEncryptedTally = [];  // Placeholder for re-encrypted tally
-
-
-    // Function to handle the audit operation
-    function runAudit() {
-        const modal = document.getElementById('modal');
-        const modalText = document.getElementById('modal-text');
-        const runAuditButton = document.getElementById('run-audit-btn');
-
-        // Disable the button to prevent multiple clicks
-        runAuditButton.disabled = true;
-        runAuditButton.textContent = "Running Audit...";
-
-        // Perform the audit operation using an AJAX request
-        fetch('/perform_audit', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-                runAuditButton.disabled = false;
-                runAuditButton.textContent = "Run Audit Operation";
-                return;
-            }
-
-            // Prepare modal content
-            const decryptedTally = data.decrypted_tally.join(', ');
-            const publicKey = data.public_key;
-            const encryptedTally = data.encrypted_tally;
-            const reEncryptedTally = data.re_encrypted_tally.join(', ');
-
-            modalText.innerHTML = `
-                <h3>Audit Results</h3>
-                <p><strong>Decrypted Tally:</strong> ${decryptedTally}</p>
-                <p><strong>Public Key:</strong> ${publicKey}</p>
-                <p><strong>Encrypted Tally:</strong> ${encryptedTally}</p>
-                <p><strong>Re-Encrypted Tally:</strong><br>${reEncryptedTally.replace(/,/g, '<br>')}</p>
-            `;
-
-            // Show the modal
-            modal.style.display = 'block';
-
-            // Enable the button again
-            runAuditButton.disabled = false;
-            runAuditButton.textContent = "Run Audit Operation";
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while running the audit.');
-            runAuditButton.disabled = false;
-            runAuditButton.textContent = "Run Audit Operation";
-        });
-    }
-
-    // Close the modal
-    function closeModal() {
-        const modal = document.getElementById('modal');
-        modal.style.display = 'none';
-    }
+    <script>
+        // Encrypted sum, randomness, and public key values dynamically passed from the backend
+        const encryptedSum = "{{ last_election['encrypted_sum'] }}";
+        const randomness = "{{ last_election['combined_randomness'] }}";
+        const publicKey = "{{ last_election['public_key'] }}";
 
         function showModal(field) {
             const modal = document.getElementById('modal');
             const modalText = document.getElementById('modal-text');
-
             let textToShow = '';
 
             if (field === 'encrypted-sum') {
                 textToShow = encryptedSum;
             } else if (field === 'randomness') {
                 textToShow = randomness;
-            }
-            else if (field === 'public_key') {
+            } else if (field === 'public_key') {
                 textToShow = publicKey;
+            } else if (field === 'audit-results') {
+                // Fetch audit data dynamically for Run Audit Operation
+                fetch('/perform_audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.error) {
+                            alert('Error: ' + data.error);
+                            return;
+                        }
+                        const encryptedSum = data.encrypted_tally;
+                        const reEncryptedSum = data.re_encrypted_tally.replace(/,/g, ',\n');
+                        textToShow = `Encrypted Sum:\n${encryptedSum}\n\nRe-Encrypted Sum:\n${reEncryptedSum}`;
+                        modalText.textContent = textToShow;
+                        modalText.style.whiteSpace = 'pre-wrap';
+                        modal.style.display = 'block';
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                        alert('An error occurred while fetching audit results.');
+                    });
+                return;
             }
 
-            // Replace commas with commas followed by a newline
             modalText.textContent = textToShow.replace(/,/g, ',\n');
-
-            // Ensure newlines are respected in the modal text
             modalText.style.whiteSpace = 'pre-wrap';
-
             modal.style.display = 'block';
         }
-        // Close the modal
+
         function closeModal() {
             const modal = document.getElementById('modal');
             modal.style.display = 'none';
         }
     </script>
-
 </body>
 
 </html>

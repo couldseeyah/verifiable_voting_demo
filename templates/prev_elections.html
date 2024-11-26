@@ -44,6 +44,27 @@
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
         }
 
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #3a61e3;
+            color: #fff;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
         /* Button styling */
         .dashboard-button {
             width: 100%;
@@ -62,10 +83,20 @@
             background-color: #22408a;
         }
 
-        /* Link styling */
-        a {
-            text-decoration: none;
+        .back-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
             color: #fff;
+            background-color: #ff4c4c;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .back-button:hover {
+            background-color: #cc3b3b;
         }
 
         /* Footer link styling */
@@ -91,10 +122,10 @@
                         <th>Date</th>
                         <th>Status (Ongoing or Not)</th>
                         <th>Results Visibility</th>
-                        <th>Encrypted Result</th>
+                        <!-- <th>Encrypted Result</th> -->
                         <th>Decrypted Result</th>
-                        <th>Combined Randomness</th>
-                        <th>Candidate Names</th>  <!-- New column for Candidate Names -->
+                        <!-- <th>Combined Randomness</th> -->
+                        <th>Candidate Names</th> <!-- New column for Candidate Names -->
                     </tr>
                 </thead>
                 <tbody>
@@ -105,12 +136,12 @@
                         <td>{{ election.start_time }} - {{ election.end_time }}</td>
                         <td>{{ election.ongoing }}</td>
                         <td>{{ election.results_visibility }}</td>
-                        <td>{{ election.encrypted_sum }}</td>
+                        <!-- <td>{{ election.encrypted_sum }}</td> -->
                         <td>{{ election.decrypted_tally }}</td>
-                        <td>{{ election.combined_randomness }}</td>
+                        <!-- <td>{{ election.combined_randomness }}</td> -->
                         <td>
                             {% if election.candidates %}
-                                {{ election.candidates | join(', ') }}  <!-- Render the candidate names -->
+                                {{ election.candidates | join(', ') }} <!-- Render the candidate names -->
                             {% else %}
                                 No candidates available
                             {% endif %}
@@ -122,8 +153,12 @@
             {% else %}
             <p>No previous elections found.</p>
             {% endif %}
-        </div>
 
+            <!-- Back Button -->
+            <form action="{{ url_for('admin_dashboard') }}" method="get">
+                <button type="submit" class="back-button">Back</button>
+            </form>
+        </div>
     </div>
 
 </body>

@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
-import io, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
+import io
 from database_handler import Database
 from dotenv import load_dotenv
 import os
@@ -26,6 +26,16 @@ print("Supabase URL: ", SUPABASE_URL)
 @app.route('/')
 def home():
     return render_template('login.html')
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    # Redirect to login page
+    return redirect(url_for('voter_login'))  # Assuming 'home' renders the login page
+
+@app.route('/admin_dashboard', methods=['GET'])
+def admin_dashboard():
+    return render_template('admin_dashboard.html')
+
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -341,6 +351,8 @@ def perform_audit():
     combined_randomness = last_election['combined_randomness'].lstrip(string.punctuation)
     encryption_handler = Encryption(public_key=public_key)
     combined_randomness = re.sub(r'[^\d]', '', combined_randomness)
+    print("combined rand: ", combined_randomness)
+    print("decrypted tally: ", decrypted_tally)
 
     # Convert to an integer
     try:
@@ -356,8 +368,6 @@ def perform_audit():
     re_encrypted_strings = ','.join(re_encrypted_strings)
     # Return all data as JSON
     return jsonify({
-        'decrypted_tally': decrypted_tally,
-        'public_key': public_key,
         'encrypted_tally': encrypted_tally,
         're_encrypted_tally': re_encrypted_strings
     })
@@ -391,8 +401,7 @@ def search_vote():
 
 @app.route('/results', methods=['GET'])
 def results():
-    last_election = db_handler.retrieve_last_election()
-    print("Last election: ", last_election)
+    last_election = db_handler.retrieve_last_election()    
     if last_election:
         candidates = db_handler.retrieve_candidates(last_election['id'])
         decrypted_tally = last_election['decrypted_tally'].split(',')
