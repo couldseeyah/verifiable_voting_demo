@@ -22,7 +22,7 @@
                     <div class="candidate">
                         <label>
                             <div class="candidate-details">
-                                <img src="{{ candidate.symbol_url }}" alt="{{ candidate.name }} symbol"
+                                <img src="{{ candidate.symbol }}" alt="{{ candidate.name }} symbol"
                                     class="candidate-symbol">
                                 <input type="radio" name="candidate" value="{{ candidate.cand_id }}" required>
                                 <span>{{ candidate.name }}</span>
@@ -40,6 +40,10 @@
                 <button type="submit" class="submit-button">Submit Vote</button>
             </form>
         </main>
+        <!-- Logout Button -->
+        <form action="{{ url_for('logout') }}" method="get">
+            <button type="submit" class="logout-button">Logout</button>
+        </form>
     </div>
 </body>
 

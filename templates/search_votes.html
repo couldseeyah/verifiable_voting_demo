@@ -1,11 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Encrypted Votes</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .logout-button {
+            padding: 10px 20px;
+            margin: 20px 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #ff4c4c;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #cc3b3b;
+        }
+    </style>
 </head>
+
+
+
 <body>
     <div class="container">
         <header class="header">
@@ -13,26 +35,57 @@
         </header>
         <main class="voting-section">
             <form action="/search-vote" method="GET" class="search-form">
-                <h2>Enter Vote ID</h2>
-                <input type="text" name="vote_id" placeholder="Enter Vote ID" class="search-input" required>
+                <h2>Enter Ballot ID</h2>
+                <input type="text" name="vote_id" placeholder="Search..." class="search-input" required>
                 <button type="submit" class="submit-button">Search</button>
             </form>
-             <!-- Result Section -->
-             {% if vote_result %}
-             <div id="vote-result" class="result-section">
-                 <h2>Vote Receipt</h2>
-                 <div class="receipt-item"><span>Election ID:</span> {{ vote_result['election_id'] }}</div>
-                 <div class="receipt-item"><span>Ballot ID:</span> {{ vote_result['ballot_id'] }}</div>
-                 <div class="receipt-item"><span>CNIC:</span> {{ vote_result['cnic'] }}</div>
-                 <div class="receipt-item"><span>Hash:</span> {{ vote_result['vote_hash'] }}</div>
-                 <div class="receipt-item"><span>Timestamp:</span> {{ vote_result['time'] }}</div>
-             </div>
-             {% elif not vote_result and ballot_id_provided %}
-             <div id="vote-result" class="result-section">
-                 <h2>No Results Found for Ballot ID: {{ ballot_id }}</h2>
-             </div>
-             {% endif %}
+
+            <!-- General Encryption List -->
+            {% if votes %}
+            <form action="/results" method="get">
+                <button type="submit" class="logout-button">Back</button>
+            </form>
+            <div class="container my-5">
+                <div class="row g-4">
+                    {% for vote in votes %}
+                    <div class="col-md-4">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary">Ballot ID: {{ vote.ballot_id }}</h5>
+                                <p class="card-text">
+                                    <strong>Vote Hash:</strong> {{ vote.vote_hash }}<br>
+                                    <strong>Time:</strong> {{ vote.time }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Result Section -->
+            {% if ballot_id_provided %}
+            {% if vote_result %}
+            <div id="vote-result" class="result-section">
+                <h2>Vote Receipt</h2>
+                <div class="receipt-item"><span>Election ID:</span> {{ vote_result['election_id'] }}</div>
+                <div class="receipt-item"><span>Ballot ID:</span> {{ vote_result['ballot_id'] }}</div>
+                <div class="receipt-item"><span>CNIC:</span> {{ vote_result['cnic'] }}</div>
+                <div class="receipt-item"><span>Hash:</span> {{ vote_result['vote_hash'] }}</div>
+                <div class="receipt-item"><span>Timestamp:</span> {{ vote_result['time'] }}</div>
+            </div>
+            {% else %}
+            <div id="vote-result" class="result-section">
+                <h2>No Results Found for Ballot ID: {{ ballot_id }}</h2>
+            </div>
+            {% endif %}
+            <form action="/search_encryptions" method="get">
+                <button type="submit" class="logout-button">Back</button>
+            </form>
+            {% endif %}
         </main>
     </div>
 </body>
+
 </html>

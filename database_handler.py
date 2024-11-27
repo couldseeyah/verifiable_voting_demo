@@ -87,23 +87,14 @@ class Database:
         # Return the response from the insertion operation
         return response
 
-    def update_result_visibility(self, election_id: int, status: bool) -> Optional[Dict[str, Any]]:
-        election_data = self.retrieve_election_data(election_id)
-
-        if not election_data:
-            return {"status": "error", "message": f"Election ID {election_id} not found"}
-
-        # Check if the election status is False aka not ongoing currently
-        if not election_data['ongoing']:
-            # Update the results_visibility to True
+    def update_result_visibility(self, election_id: int, mode: bool) -> Optional[Dict[str, Any]]:
+        """If mode is true, set given election_id to visible. if false, set all elections as insivisble."""
+        if mode:
             response = self.supabase.table("elections").update({"results_visibility": True}).eq("id", election_id).execute()
-            
-            if response.status_code == 200:
-                return {"status": "success", "message": f"Results visibility updated for election ID {election_id}"}
-            else:
-                return {"status": "error", "message": f"Failed to update results visibility for election ID {election_id}"}
-        
-        return {"status": "skipped", "message": f"Election ID {election_id} is already ongoing; no update made"}
+        else:
+            response = self.supabase.table("elections").update({"results_visibility": False}).neq("id", -1).execute()
+        return response.data
+    
 
     def retrieve_last_election(self):
         response = self.supabase.table('elections').select('*').order('created_at', desc=True).limit(1).execute()
@@ -156,6 +147,7 @@ class Database:
 
         # Update the status of the last election to False (completed)
         update_response = self.supabase.table("elections").update({"ongoing": False}).eq("id", election_id).execute()
+        res = self.update_result_visibility(election_id, True)
         return update_response.data
 
     def retrieve_election_data(self, election_id: int) -> Optional[Dict[str, Any]]:
@@ -195,12 +187,12 @@ class Database:
             print(f"Error retrieving encrypted votes for election ID {election_id}: {e}")
             return []
         
-    def get_vote_by_ballot_id(self, ballot_id: str) -> dict:
+    def get_vote_by_ballot_id(self, ballot_id: str, election_id: str) -> dict:
         """
-        Retrieve a vote receipt by ballot ID.
+        Retrieve a vote receipt by ballot ID and election ID.
         """
         try:
-            response = self.supabase.table("votes").select("*").eq("ballot_id", ballot_id).execute()
+            response = self.supabase.table("votes").select("*").eq("ballot_id", ballot_id).eq("election_id", election_id).execute()
             if response.data:
                 return response.data[0]  # Return the first matching vote record
             return None

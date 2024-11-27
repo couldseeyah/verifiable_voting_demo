@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voter Receipt</title>
+    <link rel="stylesheet" href="/static/styles.css">
     <style>
         /* Reset styling */
         * {
@@ -11,7 +13,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         /* Centering content vertically with column direction */
         body {
             display: flex;
@@ -22,52 +24,68 @@
             font-family: Arial, sans-serif;
             background-color: #f0f2f5;
             text-align: center;
+            padding: 20px;
         }
 
         /* Heading styling */
         h1 {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            color: #333;
         }
 
         /* Receipt container styling */
         .receipt-container {
-            width: 300px;
+            width: 100%;
+            max-width: 350px;
             padding: 20px;
-            border: 1px solid #000;
+            border: 1px solid #ccc;
             border-radius: 8px;
             background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: left;
         }
 
         /* Receipt title */
         h2 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
         }
 
-        /* Ballot ID and CNIC styling */
+        /* Ballot ID, CNIC, and other info styling */
         .info {
             font-size: 16px;
-            margin-bottom: 20px;
+            color: #555;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .info br {
+            margin-bottom: 5px;
         }
 
         /* Hash, Date, and PS# styling */
         .details {
             font-size: 14px;
-            color: #333;
+            color: #777;
             line-height: 1.5;
+            word-wrap: break-word;
         }
+
     </style>
 </head>
+
 <body>
 
-    <h1>Voting Complete. Your vote has been casted and recorded.</h1>
+    <h1>Voting Complete. Your vote has been cast and recorded.</h1>
 
     <div class="receipt-container">
         <h2>VOTER RECEIPT</h2>
-        
+
         <!-- Ballot ID and CNIC -->
         <div class="info">
             ELECTION ID: {{ vote_data.election_id }}<br>
@@ -82,5 +100,10 @@
         </div>
     </div>
 
+    <!-- Logout Button -->
+    <form action="{{ url_for('logout') }}" method="get">
+        <button type="submit" class="logout-button">Logout</button>
+    </form>
 </body>
+
 </html>

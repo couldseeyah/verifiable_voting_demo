@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -87,16 +88,17 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Election Setup</h1>
-        <form action="{{ url_for('set_candidates') }}" method="post">
+        <form action="{{ url_for('set_candidates') }}" method="post" id="electionForm">
             <!-- Election ID -->
             <div class="form-group">
                 <label for="election_id">Election ID</label>
                 <input type="text" id="election_id" name="election_id" placeholder="Enter Election ID" required>
             </div>
-            
+
             <!-- Election Start Time -->
             <div class="form-group">
                 <label for="start_time">Election Start Time</label>
@@ -108,15 +110,42 @@
                 <label for="end_time">Election End Time</label>
                 <input type="datetime-local" id="end_time" name="end_time" required>
             </div>
-            
+
             <!-- Number of Candidates -->
             <div class="form-group">
                 <label for="num_candidates">Enter Number of Candidates</label>
                 <input type="number" id="num_candidates" name="num_candidates" min="1" max="10" required>
             </div>
-            
+
             <button type="submit">Continue</button>
         </form>
     </div>
+
+    <script>
+        document.getElementById('electionForm').addEventListener('submit', function (e) {
+            const startTime = document.getElementById('start_time').value;
+            const endTime = document.getElementById('end_time').value;
+
+            // Get current date and time
+            const now = new Date();
+            const currentTime = now.toISOString().slice(0, 16); // Format for datetime-local (YYYY-MM-DDTHH:mm)
+
+            // Check if start time is before the current date and time
+            if (startTime < currentTime) {
+                alert('Start time cannot be before the current time.');
+                e.preventDefault();
+                return false;
+            }
+
+            // Check if end time is before the start time
+            if (endTime < startTime) {
+                alert('End time cannot be before the start time.');
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
+
 </body>
+
 </html>

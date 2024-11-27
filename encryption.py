@@ -100,4 +100,3 @@ class Encryption:
         :return: Serialized output.
         """
         pass
-

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, session
 import io
 from database_handler import Database
 from dotenv import load_dotenv
@@ -17,6 +17,7 @@ load_dotenv()
 # use .env file for this??
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 db_handler = Database(SUPABASE_URL, SUPABASE_KEY)
 # encryption_handler = Encryption()
 private_key_file = 'private_key.txt'
@@ -30,6 +31,7 @@ def home():
 @app.route('/logout', methods=['GET'])
 def logout():
     # Redirect to login page
+    session.pop("results_encryptions", None)
     return redirect(url_for('voter_login'))  # Assuming 'home' renders the login page
 
 @app.route('/admin_dashboard', methods=['GET'])
@@ -115,7 +117,7 @@ def end_election():
     with open(private_key_file, 'r') as file:
         priv_key = file.read().strip()  # Use .strip() to remove leading/trailing whitespace
     
-    encryption_handler = Encryption(response.data[0]['public_key'], priv_key)
+    encryption_handler = Encryption(response[0]['public_key'], priv_key)
 
     #Homomorphic addition
     sum = encrypted_votes[0] #will contain encrypted result
@@ -271,11 +273,10 @@ def start_election():
     )
 
     if response1.data and response2.data:
-        response = db_handler.supabase.table("elections").select("*").execute()
-        res = db_handler.update_result_visibility(election_id)
-        elections = response.data
-        last_election = elections[-1] if elections else None
-        return render_template('admin_dashboard.html', elections=elections, last_election=last_election)
+        # fetch latest created election
+        response = db_handler.retrieve_last_election()
+        res = db_handler.update_result_visibility(election_id, False)
+        return render_template('admin_dashboard.html', last_election=response)
     else:
         print(f"Error inserting election: {response}")
         return "Failed to start the election", 500
@@ -348,21 +349,20 @@ def perform_audit():
     decrypted_tally = last_election['decrypted_tally'].split(',')  # Split tally string into list
     public_key = last_election['public_key'] # Assuming the public key is stored in the election record
     encrypted_tally = last_election['encrypted_sum']
-    combined_randomness = last_election['combined_randomness'].lstrip(string.punctuation)
+    combined_randomness = last_election['combined_randomness'].split(',')
     encryption_handler = Encryption(public_key=public_key)
-    combined_randomness = re.sub(r'[^\d]', '', combined_randomness)
-    print("combined rand: ", combined_randomness)
-    print("decrypted tally: ", decrypted_tally)
-
+    
     # Convert to an integer
     try:
-        combined_randomness = int(combined_randomness)
+        combined_randomness = [int(random) for random in combined_randomness]
     except ValueError as e:
         print(f"Error converting combined_randomness to int: {e}")
         raise ValueError("Invalid combined_randomness: must be numeric.")
 
     # Re-encrypt the decrypted tally using the public key
-    re_encrypted_tally = [encryption_handler.encrypt(int(vote), int(combined_randomness)) for vote in decrypted_tally] #consists of ciphertext ojects
+    re_encrypted_tally = []
+    for i in range(len(decrypted_tally)):
+        re_encrypted_tally.append(encryption_handler.encrypt(int(decrypted_tally[i]), combined_randomness[i])) #consists of ciphertext ojects
 
     re_encrypted_strings = [str(encrypted.ciphertext) for encrypted in re_encrypted_tally] #consists of ciphertext only
     re_encrypted_strings = ','.join(re_encrypted_strings)
@@ -377,19 +377,24 @@ def search_encryptions():
     # Fetch the first election with visible results using the DB handler
     visible_election = db_handler.get_visible_election()
     if visible_election:
-        # Fetch votes for the visible election using the DB handler
-        votes = db_handler.get_votes_by_election(visible_election['id'])
-        return render_template('search_votes.html', votes=votes)
+        if "results_encryptions" not in session:
+            # Fetch votes for the visible election using the DB handler
+            votes = db_handler.get_votes_by_election(visible_election['id'])
+            session["results_encryptions"] = votes
+            return render_template('search_votes.html', votes=votes)
+        else:
+            return render_template('search_votes.html', votes=session["results_encryptions"])
     return "No visible results", 403
 
 @app.route('/search-vote', methods=['GET'])
 def search_vote():
     ballot_id = request.args.get('vote_id')  # Get the ballot_id from the form
+    election = db_handler.get_visible_election() # Get the visible election
     vote_result = None
 
     if ballot_id:
         # Fetch the vote record from the database using the ballot_id
-        vote_result = db_handler.get_vote_by_ballot_id(ballot_id)
+        vote_result = db_handler.get_vote_by_ballot_id(ballot_id, election['id'])
 
     return render_template(
         'search_votes.html',
