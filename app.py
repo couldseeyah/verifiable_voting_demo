@@ -346,7 +346,10 @@ def perform_audit():
     if not last_election:
         return "No election data found", 404
 
+    candidates = db_handler.retrieve_candidates(last_election['id'])
     decrypted_tally = last_election['decrypted_tally'].split(',')  # Split tally string into list
+    #combining candiate names and votes
+    results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
     public_key = last_election['public_key'] # Assuming the public key is stored in the election record
     encrypted_tally = last_election['encrypted_sum']
     combined_randomness = last_election['combined_randomness'].split(',')
@@ -366,11 +369,20 @@ def perform_audit():
 
     re_encrypted_strings = [str(encrypted.ciphertext) for encrypted in re_encrypted_tally] #consists of ciphertext only
     re_encrypted_strings = ','.join(re_encrypted_strings)
-    # Return all data as JSON
-    return jsonify({
+    
+    # Add data to render in the modal
+    modal_data = {
         'encrypted_tally': encrypted_tally,
         're_encrypted_tally': re_encrypted_strings
-    })
+    }
+
+    # Render the same template with audit data
+    return render_template(
+        'results.html',
+        last_election=last_election,
+        modal_data=modal_data, 
+        results = results
+    )
 
 @app.route('/search_encryptions', methods=['GET'])
 def search_encryptions():
