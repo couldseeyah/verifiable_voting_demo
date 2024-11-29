@@ -20,7 +20,21 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 db_handler = Database(SUPABASE_URL, SUPABASE_KEY)
 # encryption_handler = Encryption()
-private_key_file = 'private_key.txt'
+
+def get_private_key_path():
+    """Returns the appropriate path for storing the private key file"""
+    # Check if running on Vercel (VERCEL=1 is automatically set in Vercel environment)
+    if os.environ.get('VERCEL') == '1':
+        base_dir = '/tmp'
+    else:
+        # Use current directory for local development
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    print(f"Using base directory: {base_dir} for private key storage")  # Debug log
+    return os.path.join(base_dir, 'private_key.txt')
+
+private_key_file = get_private_key_path()
+
 print("Supabase URL: ", SUPABASE_URL)
 
 # starting page for the voting app
@@ -114,8 +128,12 @@ def end_election():
             encrypted_vote_vector.append(encrypted_vote)
         encrypted_votes.append(encrypted_vote_vector)
     
-    with open(private_key_file, 'r') as file:
-        priv_key = file.read().strip()  # Use .strip() to remove leading/trailing whitespace
+    try:
+        with open(get_private_key_path(), 'r') as file:
+            priv_key = file.read().strip()
+    except Exception as e:
+        print(f"Error reading private key: {str(e)}")
+        return render_template('admin_dashboard.html', message="Error: Could not retrieve election key")
     
     encryption_handler = Encryption(response[0]['public_key'], priv_key)
 
@@ -250,8 +268,12 @@ def start_election():
     public_key = public_key_g + ',' + public_key_n
 
     # Save the private key to a text file
-    with open('private_key.txt', 'w') as file:
-        file.write(str(encryption.paillier.keys['private_key']['phi']))
+    try:
+        with open(get_private_key_path(), 'w') as file:
+            file.write(str(encryption.paillier.keys['private_key']['phi']))
+    except Exception as e:
+        print(f"Error writing private key: {str(e)}")
+        return "Failed to store election key", 500
 
     # Store data in the database
     response1 = db_handler.store_election_data(
