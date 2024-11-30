@@ -347,12 +347,12 @@ def perform_audit():
         return "No election data found", 404
 
     candidates = db_handler.retrieve_candidates(last_election['id'])
-    decrypted_tally = last_election['decrypted_tally'].split(',')  # Split tally string into list
+    decrypted_tally = last_election['decrypted_tally'].split(',') if last_election['decrypted_tally'] else []
     #combining candiate names and votes
     results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
     public_key = last_election['public_key'] # Assuming the public key is stored in the election record
     encrypted_tally = last_election['encrypted_sum']
-    combined_randomness = last_election['combined_randomness'].split(',')
+    combined_randomness = last_election['combined_randomness'].split(',') if last_election['combined_randomness'] else []
     encryption_handler = Encryption(public_key=public_key)
     
     # Convert to an integer
@@ -421,10 +421,13 @@ def results():
     last_election = db_handler.retrieve_last_election()    
     if last_election:
         candidates = db_handler.retrieve_candidates(last_election['id'])
-        decrypted_tally = last_election['decrypted_tally'].split(',')
-        #combining candiate names and votes
-        results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
-        return render_template('results.html', last_election=last_election, results=results)
+        decrypted_tally = last_election['decrypted_tally']
+        if decrypted_tally:
+            decrypted_tally = decrypted_tally.split(',')
+            #combining candiate names and votes
+            results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
+            return render_template('results.html', last_election=last_election, results=results)
+        return render_template('results.html', last_election=last_election, results=[])
     return "No results to display", 403
 
 
