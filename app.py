@@ -79,10 +79,11 @@ def voter_login():
         last_election = db_handler.retrieve_last_election()
 
         if last_election['ongoing'] == True:
-            # Retrieve vote data by cnic
-            vote_data = db_handler.retrieve_vote_data(cnic, last_election['id'])
-            if vote_data:
-                return render_template('receipt.html', vote_data=vote_data[0])
+            #Check if this cnic has already cast a vote
+            voter_data = db_handler.retrieve_voter_data(cnic, last_election['id'])
+            # vote_data = db_handler.retrieve_vote_data(cnic, last_election['id'])
+            if voter_data:
+                return render_template('login.html', message="Vote has already been cast for the current election.")
             else:
                 # Retrieve candidates and their symbols
                 candidates = db_handler.retrieve_candidates(last_election['id'])
@@ -346,7 +347,6 @@ def cast_vote(cnic):
 
     # Store vote data using Supabase handler
     response = db_handler.store_vote_data(
-        cnic=cnic,
         ballot_id=ballot_id,
         election_id=election_id,
         encrypted_vote=encryption,
@@ -356,8 +356,13 @@ def cast_vote(cnic):
     )
 
     if response:
-        vote_data = db_handler.retrieve_vote_data(cnic, election_id)
-        return render_template('receipt.html', vote_data=vote_data[0])
+        #store CNIC and Election ID in Voter Table
+        voter_response = db_handler.store_voter_data(cnic, election_id)
+        if voter_response:
+            vote_data = db_handler.retrieve_vote_data(ballot_id, election_id)
+            return render_template('receipt.html', vote_data=vote_data[0])
+        else: 
+            return "Failed to store voter data", 500
     else:
         return "Failed to cast vote", 500
     
