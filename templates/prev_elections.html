@@ -122,9 +122,7 @@
                         <th>Date</th>
                         <th>Status (Ongoing or Not)</th>
                         <th>Results Visibility</th>
-                        <!-- <th>Encrypted Result</th> -->
                         <th>Decrypted Result</th>
-                        <!-- <th>Combined Randomness</th> -->
                         <th>Candidate Names</th> <!-- New column for Candidate Names -->
                     </tr>
                 </thead>
@@ -136,9 +134,7 @@
                         <td>{{ election.start_time }} - {{ election.end_time }}</td>
                         <td>{{ election.ongoing }}</td>
                         <td>{{ election.results_visibility }}</td>
-                        <!-- <td>{{ election.encrypted_sum }}</td> -->
                         <td>{{ election.decrypted_tally }}</td>
-                        <!-- <td>{{ election.combined_randomness }}</td> -->
                         <td>
                             {% if election.candidates %}
                                 {{ election.candidates | join(', ') }} <!-- Render the candidate names -->
