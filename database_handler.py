@@ -9,9 +9,16 @@ class Database:
         """
         self.supabase: Client = create_client(supabase_url, supabase_key)
 
+    def store_voter_data(self, cnic: str, election_id: int):
+        data = {"cnic": cnic,
+                "election_id": election_id,
+                }
+        
+        response = self.supabase.table("voters").insert(data).execute()
+        return response if response else None
+
     def store_vote_data(
         self,
-        cnic: str,
         ballot_id: int,
         election_id: int,
         encrypted_vote: str,
@@ -23,7 +30,6 @@ class Database:
         Store vote data in the votes table.
         """
         data = {
-            "cnic": cnic,
             "ballot_id": ballot_id,
             "election_id": election_id,
             "encrypted_vote": encrypted_vote,
@@ -33,12 +39,19 @@ class Database:
         }
         response = self.supabase.table("votes").insert(data).execute()
         return response if response else None
-
-    def retrieve_vote_data(self, cnic: str, id: int) -> Optional[Dict[str, Any]]:
+    
+    def retrieve_voter_data(self, cnic: str, election_id: int) -> Optional[Dict[str, Any]]:
+        response = self.supabase.table("voters").select("*").eq("cnic", cnic).eq("election_id", election_id).execute()
+        if response.data:
+            return response.data
+        return None
+    
+    def retrieve_vote_data(self, ballot_id: str, election_id: int) -> Optional[Dict[str, Any]]:
         """
-        Retrieve vote data from the votes table by CNIC and election ID.
+        Retrieve vote data from the votes table by ballot_id and election ID.
         """
-        response = self.supabase.table("votes").select("*").eq("cnic", cnic).eq("election_id", id).execute()
+        print("TYPE:", type(election_id))
+        response = self.supabase.table("votes").select("*").eq("ballot_id", ballot_id).eq("election_id", election_id).execute()
         if response.data:
             return response.data
         return None

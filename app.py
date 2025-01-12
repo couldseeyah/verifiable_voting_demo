@@ -20,7 +20,21 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 db_handler = Database(SUPABASE_URL, SUPABASE_KEY)
 # encryption_handler = Encryption()
-private_key_file = 'private_key.txt'
+
+def get_private_key_path():
+    """Returns the appropriate path for storing the private key file"""
+    # Check if running on Vercel (VERCEL=1 is automatically set in Vercel environment)
+    if os.environ.get('VERCEL') == '1':
+        base_dir = '/tmp'
+    else:
+        # Use current directory for local development
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    print(f"Using base directory: {base_dir} for private key storage")  # Debug log
+    return os.path.join(base_dir, 'private_key.txt')
+
+private_key_file = get_private_key_path()
+
 print("Supabase URL: ", SUPABASE_URL)
 
 # starting page for the voting app
@@ -65,10 +79,11 @@ def voter_login():
         last_election = db_handler.retrieve_last_election()
 
         if last_election['ongoing'] == True:
-            # Retrieve vote data by cnic
-            vote_data = db_handler.retrieve_vote_data(cnic, last_election['id'])
-            if vote_data:
-                return render_template('receipt.html', vote_data=vote_data[0])
+            #Check if this cnic has already cast a vote
+            voter_data = db_handler.retrieve_voter_data(cnic, last_election['id'])
+            # vote_data = db_handler.retrieve_vote_data(cnic, last_election['id'])
+            if voter_data:
+                return render_template('login.html', message="Vote has already been cast for the current election.")
             else:
                 # Retrieve candidates and their symbols
                 candidates = db_handler.retrieve_candidates(last_election['id'])
@@ -114,8 +129,12 @@ def end_election():
             encrypted_vote_vector.append(encrypted_vote)
         encrypted_votes.append(encrypted_vote_vector)
     
-    with open(private_key_file, 'r') as file:
-        priv_key = file.read().strip()  # Use .strip() to remove leading/trailing whitespace
+    try:
+        with open(get_private_key_path(), 'r') as file:
+            priv_key = file.read().strip()
+    except Exception as e:
+        print(f"Error reading private key: {str(e)}")
+        return render_template('admin_dashboard.html', message="Error: Could not retrieve election key")
     
     encryption_handler = Encryption(response[0]['public_key'], priv_key)
 
@@ -265,8 +284,12 @@ def start_election():
     public_key = public_key_g + ',' + public_key_n
 
     # Save the private key to a text file
-    with open('private_key.txt', 'w') as file:
-        file.write(str(encryption.paillier.keys['private_key']['phi']))
+    try:
+        with open(get_private_key_path(), 'w') as file:
+            file.write(str(encryption.paillier.keys['private_key']['phi']))
+    except Exception as e:
+        print(f"Error writing private key: {str(e)}")
+        return "Failed to store election key", 500
 
     # Store data in the database
     response1 = db_handler.store_election_data(
@@ -339,7 +362,6 @@ def cast_vote(cnic):
 
     # Store vote data using Supabase handler
     response = db_handler.store_vote_data(
-        cnic=cnic,
         ballot_id=ballot_id,
         election_id=election_id,
         encrypted_vote=encryption,
@@ -349,8 +371,13 @@ def cast_vote(cnic):
     )
 
     if response:
-        vote_data = db_handler.retrieve_vote_data(cnic, election_id)
-        return render_template('receipt.html', vote_data=vote_data[0])
+        #store CNIC and Election ID in Voter Table
+        voter_response = db_handler.store_voter_data(cnic, election_id)
+        if voter_response:
+            vote_data = db_handler.retrieve_vote_data(ballot_id, election_id)
+            return render_template('receipt.html', vote_data=vote_data[0])
+        else: 
+            return "Failed to store voter data", 500
     else:
         return "Failed to cast vote", 500
     
@@ -361,10 +388,13 @@ def perform_audit():
     if not last_election:
         return "No election data found", 404
 
-    decrypted_tally = last_election['decrypted_tally'].split(',')  # Split tally string into list
+    candidates = db_handler.retrieve_candidates(last_election['id'])
+    decrypted_tally = last_election['decrypted_tally'].split(',') if last_election['decrypted_tally'] else []
+    #combining candiate names and votes
+    results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
     public_key = last_election['public_key'] # Assuming the public key is stored in the election record
     encrypted_tally = last_election['encrypted_sum']
-    combined_randomness = last_election['combined_randomness'].split(',')
+    combined_randomness = last_election['combined_randomness'].split(',') if last_election['combined_randomness'] else []
     encryption_handler = Encryption(public_key=public_key)
     
     # Convert to an integer
@@ -381,11 +411,20 @@ def perform_audit():
 
     re_encrypted_strings = [str(encrypted.ciphertext) for encrypted in re_encrypted_tally] #consists of ciphertext only
     re_encrypted_strings = ','.join(re_encrypted_strings)
-    # Return all data as JSON
-    return jsonify({
+    
+    # Add data to render in the modal
+    modal_data = {
         'encrypted_tally': encrypted_tally,
         're_encrypted_tally': re_encrypted_strings
-    })
+    }
+
+    # Render the same template with audit data
+    return render_template(
+        'results.html',
+        last_election=last_election,
+        modal_data=modal_data, 
+        results = results
+    )
 
 @app.route('/search_encryptions', methods=['GET'])
 def search_encryptions():
@@ -424,10 +463,13 @@ def results():
     last_election = db_handler.retrieve_last_election()    
     if last_election:
         candidates = db_handler.retrieve_candidates(last_election['id'])
-        decrypted_tally = last_election['decrypted_tally'].split(',')
-        #combining candiate names and votes
-        results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
-        return render_template('results.html', last_election=last_election, results=results)
+        decrypted_tally = last_election['decrypted_tally']
+        if decrypted_tally:
+            decrypted_tally = decrypted_tally.split(',')
+            #combining candiate names and votes
+            results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
+            return render_template('results.html', last_election=last_election, results=results)
+        return render_template('results.html', last_election=last_election, results=[])
     return "No results to display", 403
 
 
@@ -460,4 +502,7 @@ def download_encryptions():
     return "No visible results", 403    
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5001)
+else:
+    # This is for Vercel
+    app = app

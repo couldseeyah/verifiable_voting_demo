@@ -224,8 +224,9 @@
                 <button onclick="showModal('randomness')">View Randomness</button>
             </div>
 
-            <!-- Button to perform backend operation and show results -->
-            <button onclick="showModal('audit-results')">Run Audit Operation</button>
+            <form action="/perform_audit" method="post">
+                <button type="submit">Run Audit Operation</button>
+            </form>
         </div>
     </div>
 
@@ -252,7 +253,8 @@
         const encryptedSum = "{{ last_election['encrypted_sum'] }}";
         const randomness = "{{ last_election['combined_randomness'] }}";
         const publicKey = "{{ last_election['public_key'] }}";
-
+        const modalData = "{{ modal_data }}";
+        
         function showModal(field) {
             const modal = document.getElementById('modal');
             const modalText = document.getElementById('modal-text');
@@ -265,29 +267,10 @@
             } else if (field === 'public_key') {
                 textToShow = publicKey;
             } else if (field === 'audit-results') {
-                // Fetch audit data dynamically for Run Audit Operation
-                fetch('/perform_audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                })
-                    .then((response) => response.json())
-                    .then((data) => {
-                        if (data.error) {
-                            alert('Error: ' + data.error);
-                            return;
-                        }
-                        const encryptedSum = data.encrypted_tally;
-                        const reEncryptedSum = data.re_encrypted_tally.replace(/,/g, ',\n');
-                        textToShow = `Encrypted Sum:\n${encryptedSum}\n\nRe-Encrypted Sum:\n${reEncryptedSum}`;
-                        modalText.textContent = textToShow;
-                        modalText.style.whiteSpace = 'pre-wrap';
-                        modal.style.display = 'block';
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                        alert('An error occurred while fetching audit results.');
-                    });
-                return;
+                textToShow = `
+                Encrypted Sum: {{ modal_data['encrypted_tally'] if modal_data }}\n\n
+                Re-Encrypted Sum:\n{{ modal_data['re_encrypted_tally'] if modal_data }}
+                `;
             }
 
             modalText.textContent = textToShow.replace(/,/g, ',\n');
@@ -299,6 +282,15 @@
             const modal = document.getElementById('modal');
             modal.style.display = 'none';
         }
+        
+        //show modal if results are present
+        window.onload = function () {
+            var modal_data = "{{modal_data}}";
+            console.log("Modal data:", modal_data)
+            if (modal_data && Object.keys(modal_data).length > 0){
+                showModal('audit-results');
+            }
+        };
     </script>
 </body>
 
