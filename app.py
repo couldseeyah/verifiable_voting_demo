@@ -28,7 +28,7 @@ print("Supabase URL: ", SUPABASE_URL)
 def home():
     return render_template('login.html')
 
-@app.route('/logout', methods=['GET'])
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     # Redirect to login page
     session.pop("results_encryptions", None)
@@ -168,6 +168,21 @@ def view_prev_elections():
         candidates_response = db_handler.supabase.table('candidates').select('name').eq('election_id', election['id']).execute()
         candidates = candidates_response.data  # Access the 'data' attribute
         election['candidates'] = [candidate['name'] for candidate in candidates]
+
+    # Prepare data
+    for election in elections:
+        if election["decrypted_tally"] is not None:
+            results = list(map(int, election["decrypted_tally"].split(',')))
+            total_votes = sum(results)
+            sorted_candidates = sorted(zip(election["candidates"], results), key=lambda x: x[1], reverse=True)
+            election["sorted_candidates"] = [
+                {
+                    "name": candidate,
+                    "votes": votes,
+                    "percentage": (votes / total_votes * 100) if total_votes > 0 else 0
+                }
+                for candidate, votes in sorted_candidates
+            ]
 
     return render_template('prev_elections.html', elections=elections)
 
