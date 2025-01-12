@@ -52,16 +52,6 @@
                             <strong>Decrypted Result:</strong> {{ election.decrypted_tally }}
                         </p>
                         <p class="card-text">
-                            <!-- <strong>Candidate Names:</strong><br>
-                            {% if election.candidates %}
-                        <ul class="list-unstyled mb-0">
-                            {% for candidate in election.candidates %}
-                            <li>- {{ candidate }}</li>
-                            {% endfor %}
-                        </ul>
-                        {% else %}
-                        No candidates available
-                        {% endif %} -->
                             {% for candidate in election.sorted_candidates %}
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">

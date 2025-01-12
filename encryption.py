@@ -3,23 +3,20 @@ from sympy import mod_inverse, gcd
 import hashlib
 
 class Ciphertext:
-    def __init__(self, ciphertext: int, randomness: int):
+    def __init__(self, ciphertext: int):
         self.ciphertext = ciphertext
-        self.randomness = randomness
 
     def __repr__(self):
         """
         Provide a string representation of the CipherData object for debugging.
         """
-        return f"CipherData(ciphertext='{self.ciphertext}', randomness='{self.randomness}')"
+        return f"CipherData(ciphertext='{self.ciphertext}')"
 
     def display(self):
         """
         Display the ciphertext and randomness in a readable format.
         """
         print(f"Ciphertext: {self.ciphertext}")
-        print(f"Randomness: {self.randomness}")
-
 
 class Encryption:
     def __init__(self, public_key: str = None, private_key: str = None):
@@ -47,15 +44,19 @@ class Encryption:
         """
         return self.paillier.generate_random_key()
 
-    def encrypt(self, plaintext: int, rand: int):
+    def encrypt(self, plaintext: int, randomness: int = None):
         """
         Encrypt the given plaintext.
 
         :param plaintext: The plaintext integer to be encrypted.
+        :param randomness: Randomness or nonce. (optional)
         :return: Ciphertext object.
         """
-        ct = self.paillier.encrypt(plaintext, rand)
-        ciphertext_object = Ciphertext(ct, rand)
+        if randomness:
+            ct = self.paillier.encrypt(plaintext, randomness)
+        else:
+            ct = self.paillier.encrypt(plaintext)
+        ciphertext_object = Ciphertext(ct)
         return ciphertext_object
 
     def add(self, ct1, ct2):
@@ -64,12 +65,10 @@ class Encryption:
 
         :param pt1: The first plaintext.
         :param pt2: The second plaintext.
-        :param randomness: Randomness or nonce.
         :return: Sum of the two plaintexts.
         """
         sum = self.paillier.add(ct1.ciphertext, ct2.ciphertext)
-        combined_randomness = ct1.randomness*ct2.randomness
-        ciphertext_object = Ciphertext(sum, combined_randomness)
+        ciphertext_object = Ciphertext(sum)
         return ciphertext_object
     
     def decrypt(self, ct):
@@ -100,3 +99,28 @@ class Encryption:
         :return: Serialized output.
         """
         pass
+
+    def extract_randomness_from_zero_vector(self, ciphertext):
+        # Step 1: Compute M = N^(-1) mod phi(N)
+        public_key_n = self.paillier.plaintext_modulo
+        phi_n = self.paillier.keys["private_key"]["phi"]
+        public_key_n_sq = self.paillier.ciphertext_modulo
+        m = mod_inverse(public_key_n, phi_n)
+        
+        # Step 2: Compute r = c^M mod N
+        r = pow(ciphertext.ciphertext, m, public_key_n)
+        
+        # return extracted random factor
+        # return pow(r, public_key_n, public_key_n_sq) 
+        return r
+
+# m = 123
+# enc = Encryption()
+# ct = enc.encrypt(m)
+# ct2 = enc.encrypt(-m, 1)
+
+# sum = enc.add(ct, ct2)
+# # other verification
+# r = enc.extract_randomness_from_zero_vector(sum)
+# print(enc.encrypt(0, r).ciphertext == sum.ciphertext)
+

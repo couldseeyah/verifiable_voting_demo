@@ -23,7 +23,6 @@ class Database:
         election_id: int,
         encrypted_vote: str,
         vote_hash: str,
-        randomness: str,
         time: datetime.datetime
     ) -> Dict[str, Any]:
         """
@@ -34,7 +33,6 @@ class Database:
             "election_id": election_id,
             "encrypted_vote": encrypted_vote,
             "vote_hash": vote_hash,
-            "randomness": randomness,
             "time": time,
         }
         response = self.supabase.table("votes").insert(data).execute()
@@ -65,9 +63,11 @@ class Database:
         status: bool,
         results_visibility: bool,
         encrypted_sum: str,
-        encrypted_randomness: str,
         decrypted_tally: str,
         public_key: str,
+        negative_tally_encryption: str,
+        zero_vector: str,
+        zero_randomness: str
     ) -> Dict[str, Any]:
         """
         Store election data in the elections table.
@@ -80,9 +80,11 @@ class Database:
             "ongoing": status,
             "results_visibility": results_visibility,
             "encrypted_sum": encrypted_sum,
-            "combined_randomness": encrypted_randomness,
             "decrypted_tally": decrypted_tally,
             "public_key": public_key,
+            "negative_tally_encryption": negative_tally_encryption,
+            "zero_vector": zero_vector,
+            "zero_randomness": zero_randomness,
         }
         response = self.supabase.table("elections").insert(data).execute()
         return response
@@ -218,9 +220,11 @@ class Database:
         self,
         election_id: int,
         encrypted_sum: str,
-        combined_randomness: str,
         decrypted_tally: str,
-        results_visibility: bool
+        results_visibility: bool,
+        negative_tally_encryption: str,
+        zero_vector: str,
+        zero_randomness: str,
     ) -> dict:
         """
         Updates the election row with the given election ID to update
@@ -230,9 +234,11 @@ class Database:
             # Create the update data dictionary
             update_data = {
                 "encrypted_sum": encrypted_sum,
-                "combined_randomness": combined_randomness,
                 "decrypted_tally": decrypted_tally,
-                "results_visibility": results_visibility
+                "results_visibility": results_visibility,
+                "negative_tally_encryption": negative_tally_encryption,
+                "zero_vector": zero_vector,
+                "zero_randomness": zero_randomness,
             }
 
             # Perform the update operation

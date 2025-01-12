@@ -220,8 +220,16 @@
 
             <!-- Button for Randomness -->
             <div class="result-item">
-                <span class="label">Randomness:</span>
-                <button onclick="showModal('randomness')">View Randomness</button>
+                <span class="label">Encryption of Negative Tally:</span>
+                <button onclick="showModal('enc')">View</button>
+            </div>
+            <div class="result-item">
+                <span class="label">Zero Vector:</span>
+                <button onclick="showModal('zero-vector')">View</button>
+            </div>
+            <div class="result-item">
+                <span class="label">Zero Vector Randomness:</span>
+                <button onclick="showModal('zero-vector-r')">View</button>
             </div>
 
             <form action="/perform_audit" method="post">
@@ -251,9 +259,11 @@
     <script>
         // Encrypted sum, randomness, and public key values dynamically passed from the backend
         const encryptedSum = "{{ last_election['encrypted_sum'] }}";
-        const randomness = "{{ last_election['combined_randomness'] }}";
         const publicKey = "{{ last_election['public_key'] }}";
         const modalData = "{{ modal_data }}";
+        const negativeTally = "{{ last_election['negative_tally_encryption'] }}";
+        const zeroVector = "{{ last_election['zero_vector'] }}";
+        const zeroVectorRandomness = "{{ last_election['zero_randomness'] }}";
         
         function showModal(field) {
             const modal = document.getElementById('modal');
@@ -262,14 +272,18 @@
 
             if (field === 'encrypted-sum') {
                 textToShow = encryptedSum;
-            } else if (field === 'randomness') {
-                textToShow = randomness;
+            } else if (field === 'enc') {
+                textToShow = negativeTally;
+            } else if (field === 'zero-vector') {
+                textToShow = zeroVector;
+            } else if (field === 'zero-vector-r') {
+                textToShow = zeroVectorRandomness;
             } else if (field === 'public_key') {
                 textToShow = publicKey;
             } else if (field === 'audit-results') {
                 textToShow = `
-                Encrypted Sum: {{ modal_data['encrypted_tally'] if modal_data }}\n\n
-                Re-Encrypted Sum:\n{{ modal_data['re_encrypted_tally'] if modal_data }}
+                Zero vector: {{ modal_data['zero_vector'] if modal_data }}\n\n
+                Re-Encrypted Zero Vector:\n{{ modal_data['re_encrypted_zero_vector'] if modal_data }}
                 `;
             }
 

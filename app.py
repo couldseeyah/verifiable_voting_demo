@@ -114,20 +114,19 @@ def end_election():
         return render_template('admin_dashboard.html', message=response.get("message")) #No ongoing election
 
     election_id = response[0]['id']
-    election_votes = db_handler.get_votes_by_election(election_id) #list of records (cnic, vote, randomness, etc for each vote)
+    election_votes = db_handler.get_votes_by_election(election_id) #list of records for each vote
 
     #Read votes into Ciphertext Objects
     vote_strings = [vote_record['encrypted_vote'] for vote_record in election_votes] #['a,b,c', 'd,e,f']
-    randomness_strings = [vote_record['randomness'] for vote_record in election_votes] #['ra,rb,rc', 'rd,re,rf']
-    encrypted_votes = [] #[[Ara,Brb, Crc], [Drd, Ere, Frf]]
-    for vote, randomness in zip(vote_strings, randomness_strings): 
-        string_vote_vector = [item.strip() for item in vote.split(',')] #[a, b, c]
-        randomness_vector = [item.strip() for item in randomness.split(',')] #[ra, rb, rc]
-        encrypted_vote_vector = [] #[Ara, Brb, Crc]
+    encrypted_votes = [] 
+    for vote in vote_strings:  
+        string_vote_vector = [item.strip() for item in vote.split(',')]  # now vote is a string
+        encrypted_vote_vector = [] 
         for i in range(len(string_vote_vector)): 
-            encrypted_vote = Ciphertext(int(string_vote_vector[i]), int(randomness_vector[i])) #C(a, ra), C(b, rb), C(c, rc)
+            encrypted_vote = Ciphertext(int(string_vote_vector[i]))  # C(a), C(b), C(c)
             encrypted_vote_vector.append(encrypted_vote)
         encrypted_votes.append(encrypted_vote_vector)
+    
     
     try:
         with open(get_private_key_path(), 'r') as file:
@@ -145,23 +144,34 @@ def end_election():
         for i in range(len(vote)): 
             sum[i] = encryption_handler.add(sum[i], vote[i])
 
-    #decrypt result:
+    #decrypt result and compute negattive for auduting purposes:
     decrypted_result = [] #will contain decrypted result
+    negative_result = [] #will contain negative of decrypted result
     for vote in sum: 
-        plaintext = encryption_handler.decrypt(vote)
-        decrypted_result.append(str(plaintext))
+        plaintext = encryption_handler.decrypt(vote) #int
+        negative = encryption_handler.encrypt(-plaintext, 1) #ciphertext object
+        decrypted_result.append(str(plaintext)) #array of strings
+        negative_result.append(negative) #array of ciphertext objects
     print("DECRYPTED RESULT: ", decrypted_result)
+
+    #auditing functions for result
+    # first add the negative of the decrypted result to the sum
+    zero_vector = []
+    zero_vector_r = []
+    for i in range(len(sum)):
+        zero_enc = encryption_handler.add(sum[i], negative_result[i]) #ciphertext object
+        r = encryption_handler.extract_randomness_from_zero_vector(zero_enc) #int
+        zero_vector.append(zero_enc) #array of ciphertext objects
+        zero_vector_r.append(str(r)) #array of strings
+
     #convert encrypted and decrypted results to string representations
     decrypted_result_string = ','.join(decrypted_result)
-    encrypted_result = []
-    combined_randomness = []
-    for vote in sum: 
-        encrypted_result.append(str(vote.ciphertext))
-        combined_randomness.append(str(vote.randomness))
-    
-    encrypted_result_string = ','.join(encrypted_result)
-    combined_randomness_string = ','.join(combined_randomness)
-    response = db_handler.update_election_results(election_id, encrypted_result_string, combined_randomness_string, decrypted_result_string, True)
+    zero_vector_r_string = ','.join(zero_vector_r)
+    encrypted_result_string = ','.join(str(vote.ciphertext) for vote in sum)
+    negative_result_string = ','.join(str(vote.ciphertext) for vote in negative_result)
+    zero_vector_string = ','.join(str(vote.ciphertext) for vote in zero_vector)
+
+    response = db_handler.update_election_results(election_id, encrypted_result_string, decrypted_result_string, True, negative_result_string, zero_vector_string, zero_vector_r_string)
     if not response.data[0]['ongoing']:
         message = ("Current election ended successfully.")
     else:
@@ -224,8 +234,10 @@ def start_election():
     status = True 
     results_visibility = False  
     encrypted_sum = None
-    encrypted_randomness = None
     decrypted_tally = None
+    negative_result = None
+    zero_vector = None
+    zero_vector_r = None
 
     # Convert to datetime objects
     start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').time()
@@ -300,9 +312,11 @@ def start_election():
         status=status,
         results_visibility=results_visibility,
         encrypted_sum=encrypted_sum,
-        encrypted_randomness=encrypted_randomness,
         decrypted_tally=decrypted_tally,
-        public_key=public_key
+        public_key=public_key,
+        negative_tally_encryption=negative_result,
+        zero_vector=zero_vector,
+        zero_randomness=zero_vector_r
     )
 
     response2 = db_handler.store_candidate_data(
@@ -347,17 +361,13 @@ def cast_vote(cnic):
     # Initialize the encryption object with the public key
     enc = Encryption(public_key=public_key)
     encryption_vector = [] 
-    random_factor_vector = []
 
     for vote in vote_vector:
-        rand = enc.generate_random_key()
-        ciphertext = enc.encrypt(vote, rand)
+        ciphertext = enc.encrypt(vote)
         encryption_vector.append(ciphertext.ciphertext)
-        random_factor_vector.append(ciphertext.randomness)
 
     # convert vectors to strings seperated by commas
     encryption = ','.join(map(str, encryption_vector))
-    random_factor = ','.join(map(str, random_factor_vector))
     hash_value = enc.hash(encryption)
 
     # Store vote data using Supabase handler
@@ -366,7 +376,6 @@ def cast_vote(cnic):
         election_id=election_id,
         encrypted_vote=encryption,
         vote_hash=hash_value,
-        randomness=random_factor,
         time=timestamp
     )
 
@@ -393,29 +402,41 @@ def perform_audit():
     #combining candiate names and votes
     results = [{'name': candidate['name'], 'votes': votes} for candidate, votes in zip(candidates, decrypted_tally)]
     public_key = last_election['public_key'] # Assuming the public key is stored in the election record
-    encrypted_tally = last_election['encrypted_sum']
-    combined_randomness = last_election['combined_randomness'].split(',') if last_election['combined_randomness'] else []
+    encrypted_tally = last_election['encrypted_sum'].split(',') if last_election['encrypted_sum'] else []
+    zero_vector_randomness = last_election['zero_randomness'].split(',') if last_election['zero_randomness'] else []
     encryption_handler = Encryption(public_key=public_key)
-    
-    # Convert to an integer
-    try:
-        combined_randomness = [int(random) for random in combined_randomness]
-    except ValueError as e:
-        print(f"Error converting combined_randomness to int: {e}")
-        raise ValueError("Invalid combined_randomness: must be numeric.")
 
-    # Re-encrypt the decrypted tally using the public key
+    #convert encrypted tally to array of ciphertext objects
+    encrypted_tally = [Ciphertext(int(t)) for t in encrypted_tally]
+    
+    # re-encrypt the negative of the decrypted tally using random factor 1
+    negative_tally_enc = [encryption_handler.encrypt(-int(t), 1) for t in decrypted_tally] #ct object
+
+    # subtract to get zero 
+    zero_vector = [
+        encryption_handler.add(encrypted_tally[i], negative_tally_enc[i])
+    for i in range(len(negative_tally_enc))
+    ] #an array of ct objects
+    #convert this array to string
+    zero_vector_string = [str(encrypted.ciphertext) for encrypted in zero_vector] #consists of ciphertext only
+    zero_vector_string = ','.join(zero_vector_string)
+
+    for i in range(len(zero_vector_randomness)):
+        zero_vector_randomness[i] = int(zero_vector_randomness[i]) #array of ints
+
+    # Re-encrypt the zero vector using the public key
     re_encrypted_tally = []
-    for i in range(len(decrypted_tally)):
-        re_encrypted_tally.append(encryption_handler.encrypt(int(decrypted_tally[i]), combined_randomness[i])) #consists of ciphertext ojects
+    zeros = [0] * len(zero_vector_randomness)
+    for i in range(len(zeros)):
+        re_encrypted_tally.append(encryption_handler.encrypt(zeros[i], zero_vector_randomness[i])) #consists of ciphertext ojects
 
     re_encrypted_strings = [str(encrypted.ciphertext) for encrypted in re_encrypted_tally] #consists of ciphertext only
     re_encrypted_strings = ','.join(re_encrypted_strings)
     
     # Add data to render in the modal
     modal_data = {
-        'encrypted_tally': encrypted_tally,
-        're_encrypted_tally': re_encrypted_strings
+        'zero_vector': zero_vector_string,
+        're_encrypted_zero_vector': re_encrypted_strings
     }
 
     # Render the same template with audit data
@@ -460,7 +481,7 @@ def search_vote():
 
 @app.route('/results', methods=['GET'])
 def results():
-    last_election = db_handler.retrieve_last_election()    
+    last_election = db_handler.retrieve_last_election()  
     if last_election:
         candidates = db_handler.retrieve_candidates(last_election['id'])
         decrypted_tally = last_election['decrypted_tally']
