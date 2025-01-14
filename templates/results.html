@@ -275,6 +275,8 @@
         const negativeTally = "{{ last_election['negative_tally_encryption'] }}";
         const zeroVector = "{{ last_election['zero_vector'] }}";
         const zeroVectorRandomness = "{{ last_election['zero_randomness'] }}";
+        const publicKey = "{{ last_election['public_key'] }}";
+        const modalData = "{{ modal_data }}";
 
         function showModal(field) {
             const modal = document.getElementById('modal');
@@ -289,9 +291,17 @@
                 textToShow = zeroVector;
             } else if (field === 'zero-vector-r') {
                 textToShow = zeroVectorRandomness;
+            } else if (field === 'public_key') {
+                textToShow = publicKey;
+            } else if (field === 'audit-results') {
+                textToShow = `
+                Zero vector: {{ modal_data['zero_vector'] if modal_data }}\n\n
+                Re-Encrypted Zero Vector:\n{{ modal_data['re_encrypted_zero_vector'] if modal_data }}
+                `;
             }
 
             modalText.textContent = textToShow.replace(/,/g, ',\n');
+            modalText.style.whiteSpace = 'pre-wrap';
             modal.style.display = 'block';
         }
 
@@ -299,6 +309,15 @@
             const modal = document.getElementById('modal');
             modal.style.display = 'none';
         }
+
+        //show modal if results are present
+        window.onload = function () {
+            var modal_data = "{{modal_data}}";
+            console.log("Modal data:", modal_data)
+            if (modal_data && Object.keys(modal_data).length > 0){
+                showModal('audit-results');
+            }
+        };
     </script>
 </body>
 

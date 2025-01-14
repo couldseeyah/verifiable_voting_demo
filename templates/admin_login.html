@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - Online Voting Platform</title>
     <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         /* Same styling as user login page with minor adjustments */
         body {
             display: flex;
@@ -84,6 +91,7 @@
                 <input type="submit" value="Login">
             </form>
         </div>
+        <a href="{{ url_for('home') }}" class="admin-link">Login as Voter Instead</a>
     </div>
 
 </body>

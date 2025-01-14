@@ -59,8 +59,8 @@
                                 <span>{{ candidate.votes }} votes</span>
                             </div>
                             <div class="progress">
-                                <div class="progress-bar progress-bar-striped" role="progressbar" style="width: 90%"
-                                    aria-valuenow="{{ candidate.votes }}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar progress-bar-striped" role="progressbar" style="width: {{ candidate.percentage }}%" 
+                                aria-valuenow="{{ candidate.percentage }}"  aria-valuemin="0" aria-valuemax="100">
                                     {{ candidate.percentage }}%
                                 </div>
                             </div>
