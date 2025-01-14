@@ -68,7 +68,7 @@ def admin_login():
             return render_template('admin_dashboard.html', elections=elections, last_election=last_election)
         else:
             return "Invalid credentials", 401
-    return render_template('login.html')
+    return render_template('admin_login.html')
 
 @app.route('/voter/login', methods=['GET', 'POST'])
 def voter_login():
@@ -217,20 +217,38 @@ def view_prev_elections():
 
 @app.route('/admin/election_setup/set_candidates', methods=['POST'])
 def set_candidates():
-    # send all data to the set_candidates.html page
-    election_id = request.form['election_id']   
+    # election_id = request.form['election_id']
     num_candidates = int(request.form['num_candidates'])
-    start_time = request.form['start_time']
-    end_time = request.form['end_time']
-    return render_template('candidate_details.html', num_candidates=num_candidates, election_id=election_id, start_time=start_time, end_time=end_time)
+    start_immediately = 'start_immediately' in request.form  # Check if checkbox is checked
+
+    if start_immediately:
+        # Set start time to now and end time to None (or a default value)
+        start_time = datetime.now().strftime('%Y-%m-%dT%H:%M')
+        # end_time = None
+    else:
+        # Retrieve specified start and end times
+        start_time = request.form['start_time']
+        # end_time = request.form['end_time']
+
+    return render_template('candidate_details.html', 
+                           num_candidates=num_candidates, 
+                        #    election_id=election_id, 
+                           start_time=start_time)
 
 @app.route('/admin/start_election', methods=['POST'])
 def start_election():
+    #retrieve previous election data to get last election ID
+    last_election = db_handler.retrieve_last_election()
+    if not last_election:
+        return "No election data found", 404
+    
+    last_election_id = last_election['id']
+    print("last election ID: ", last_election_id)
+    election_id = int(last_election_id)+1
+
     # Parse form data
-    election_id = int(request.form['election_id'])
     num_candidates = int(request.form['num_candidates'])
     start_time_str = request.form['start_time']
-    end_time_str = request.form['end_time']
     status = True 
     results_visibility = False  
     encrypted_sum = None
@@ -241,8 +259,7 @@ def start_election():
 
     # Convert to datetime objects
     start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').time()
-    end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M').time()
-
+ 
     # Initialize a list to store candidate details
     candidates = []
 
@@ -308,7 +325,7 @@ def start_election():
         election_id=election_id,
         num_candidates=num_candidates,
         start_time=start_time,
-        end_time=end_time,
+        # end_time=end_time,
         status=status,
         results_visibility=results_visibility,
         encrypted_sum=encrypted_sum,

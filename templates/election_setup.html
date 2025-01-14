@@ -86,6 +86,15 @@
         button:hover {
             background-color: #336cd1;
         }
+
+        .toggle-container {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .toggle-container label {
+            margin-right: 10px;
+        }
     </style>
 </head>
 
@@ -93,23 +102,31 @@
     <div class="container">
         <h1>Election Setup</h1>
         <form action="{{ url_for('set_candidates') }}" method="post" id="electionForm">
-            <!-- Election ID -->
+            <!-- Election ID
             <div class="form-group">
                 <label for="election_id">Election ID</label>
                 <input type="text" id="election_id" name="election_id" placeholder="Enter Election ID" required>
+            </div> -->
+
+            <!-- Toggle for Immediate Start -->
+            <div class="toggle-container">
+                <label for="start_immediately">
+                    <input type="checkbox" id="start_immediately" name="start_immediately">
+                    Start Election Immediately
+                </label>
             </div>
 
             <!-- Election Start Time -->
-            <div class="form-group">
+            <div class="form-group" id="startTimeGroup">
                 <label for="start_time">Election Start Time</label>
                 <input type="datetime-local" id="start_time" name="start_time" required>
             </div>
 
-            <!-- Election End Time -->
-            <div class="form-group">
+            <!-- Election End Time
+            <div class="form-group" id="endTimeGroup">
                 <label for="end_time">Election End Time</label>
                 <input type="datetime-local" id="end_time" name="end_time" required>
-            </div>
+            </div> -->
 
             <!-- Number of Candidates -->
             <div class="form-group">
@@ -122,30 +139,25 @@
     </div>
 
     <script>
-        document.getElementById('electionForm').addEventListener('submit', function (e) {
-            const startTime = document.getElementById('start_time').value;
-            const endTime = document.getElementById('end_time').value;
+        const startImmediatelyCheckbox = document.getElementById('start_immediately');
+        const startTimeGroup = document.getElementById('startTimeGroup');
+        // const endTimeGroup = document.getElementById('endTimeGroup');
 
-            // Get current date and time
-            const now = new Date();
-            const currentTime = now.toISOString().slice(0, 16); // Format for datetime-local (YYYY-MM-DDTHH:mm)
-
-            // Check if start time is before the current date and time
-            if (startTime < currentTime) {
-                alert('Start time cannot be before the current time.');
-                e.preventDefault();
-                return false;
-            }
-
-            // Check if end time is before the start time
-            if (endTime < startTime) {
-                alert('End time cannot be before the start time.');
-                e.preventDefault();
-                return false;
+        // Toggle visibility of time inputs based on checkbox state
+        startImmediatelyCheckbox.addEventListener('change', () => {
+            if (startImmediatelyCheckbox.checked) {
+                startTimeGroup.style.display = 'none';
+                // endTimeGroup.style.display = 'none';
+                document.getElementById('start_time').required = false;
+                // document.getElementById('end_time').required = false;
+            } else {
+                startTimeGroup.style.display = 'block';
+                // endTimeGroup.style.display = 'block';
+                document.getElementById('start_time').required = true;
+                // document.getElementById('end_time').required = true;
             }
         });
     </script>
-
 </body>
 
 </html>

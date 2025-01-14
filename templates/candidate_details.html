@@ -14,23 +14,14 @@
         }
 
         body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
             font-family: Arial, sans-serif;
             background-color: #f0f2f5;
-            color: #333;
+            padding: 20px;
         }
 
         .container {
-            background-color: #ffffff;
-            padding: 30px;
-            width: 100%;
-            max-width: 600px;
-            /* Wider form container */
-            border-radius: 8px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 1200px;
+            margin: 0 auto;
             text-align: center;
         }
 
@@ -41,54 +32,53 @@
             color: #333;
         }
 
-        .form-group {
-            margin-bottom: 20px;
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: #fff;
+            width: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
             text-align: left;
         }
 
-        label {
+        .card label {
             display: block;
             font-weight: bold;
-            margin-bottom: 8px;
-            color: #333;
+            margin-bottom: 5px;
         }
 
-        input[type="text"],
-        input[type="number"],
-        input[type="datetime-local"],
-        select,
-        input[type="file"] {
+        .card input[type="text"],
+        .card input[type="file"],
+        .card input[type="hidden"] {
             width: 100%;
             padding: 10px;
-            font-size: 16px;
+            font-size: 14px;
+            margin-bottom: 15px;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            outline: none;
-            transition: border-color 0.3s;
+            border-radius: 6px;
         }
 
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        input[type="datetime-local"]:focus,
-        select:focus,
-        input[type="file"]:focus {
-            border-color: #3a85ff;
-        }
-
-        input[readonly] {
+        .card input[readonly] {
             background-color: #f4f4f4;
             cursor: not-allowed;
         }
 
         button {
-            width: 100%;
-            padding: 12px;
+            margin-top: 20px;
+            padding: 12px 20px;
             font-size: 16px;
             font-weight: bold;
             color: #fff;
             background-color: #3a85ff;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
@@ -103,27 +93,31 @@
     <div class="container">
         <h1>Election Setup - Enter Candidate Details</h1>
         <form action="{{ url_for('start_election') }}" method="post" enctype="multipart/form-data">
-            <input type="hidden" name="election_id" value="{{ election_id }}">
+            <!-- Hidden inputs -->
+            <!-- <input type="hidden" name="election_id" value="{{ election_id }}"> -->
             <input type="hidden" name="num_candidates" value="{{ num_candidates }}">
             <input type="hidden" name="start_time" value="{{ start_time }}">
-            <input type="hidden" name="end_time" value="{{ end_time }}">
-            
-            <!-- This template dynamically generates fields for each candidate -->
-            {% for i in range(1, num_candidates + 1) %}
-            <div class="form-group">
-                <label for="candidate_name_{{ i }}">Candidate {{ i }} Name:</label>
-                <input type="text" id="candidate_name_{{ i }}" name="candidate_name_{{ i }}" required>
+            <!-- <input type="hidden" name="end_time" value="{{ end_time }}"> -->
 
-                <!-- Readonly candidate_id input, automatically assigned -->
-                <label for="candidate_id_{{ i }}">Candidate {{ i }} ID:</label>
-                <input type="text" id="candidate_id_{{ i }}" name="candidate_id_{{ i }}" value="{{ i }}" readonly>
+            <div class="cards-container">
+                <!-- Loop to dynamically create cards for each candidate -->
+                {% for i in range(1, num_candidates + 1) %}
+                <div class="card">
+                    <label for="candidate_name_{{ i }}">Candidate {{ i }} Name:</label>
+                    <input type="text" id="candidate_name_{{ i }}" name="candidate_name_{{ i }}" required>
 
-                <label for="candidate_symbol_{{ i }}">Candidate {{ i }} Symbol:</label>
-                <input type="file" id="candidate_symbol_{{ i }}" name="candidate_symbol_{{ i }}" accept="image/*" required>
+                    <label for="party_name_{{ i }}">Party Name:</label>
+                    <input type="text" id="party_name_{{ i }}" name="party_name_{{ i }}" required>
+
+                    <input type="hidden" id="candidate_id_{{ i }}" name="candidate_id_{{ i }}" value="{{ i }}">
+
+                    <label for="candidate_symbol_{{ i }}">Upload Symbol:</label>
+                    <input type="file" id="candidate_symbol_{{ i }}" name="candidate_symbol_{{ i }}" accept="image/*" required>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
 
-            <button type="submit">Submit Election Setup</button>
+            <button type="submit">Complete Setup</button>
         </form>
     </div>
 </body>

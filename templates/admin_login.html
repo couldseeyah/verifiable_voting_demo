@@ -4,16 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voter Login - Online Voting Platform</title>
+    <title>Admin Login - Online Voting Platform</title>
     <style>
-        /* Same styles as before */
-        /* Basic reset */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* Same styling as user login page with minor adjustments */
         body {
             display: flex;
             align-items: center;
@@ -50,6 +43,7 @@
         }
 
         input[type="text"],
+        input[type="password"],
         input[type="submit"] {
             width: 100%;
             padding: 12px;
@@ -69,25 +63,13 @@
         input[type="submit"]:hover {
             background-color: #22408a;
         }
-
-        .admin-link {
-            margin-top: 10px;
-            display: block;
-            font-size: 14px;
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .admin-link:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 
 <body>
 
     <div class="main-container">
-        <h1>Voter Login</h1>
+        <h1>Admin Login</h1>
 
         <div class="login-container">
             {% if message %}
@@ -95,27 +77,14 @@
                 {{ message }}
             </div>
             {% endif %}
-            <form action="{{ url_for('voter_login') }}" method="post" onsubmit="return validateCNIC()">
-                <input type="hidden" name="user_type" value="voter">
-                <input type="text" name="cnic" id="cnic" placeholder="Enter CNIC" required>
+            <form action="{{ url_for('admin_login') }}" method="post">
+                <input type="hidden" name="user_type" value="admin">
+                <input type="text" name="username" placeholder="Enter Username" required>
+                <input type="password" name="password" placeholder="Enter Password" required>
                 <input type="submit" value="Login">
             </form>
         </div>
-        <a href="{{ url_for('admin_login') }}" class="admin-link">Login as Admin Instead</a>
     </div>
-
-    <script>
-        function validateCNIC() {
-            var cnic = document.getElementById('cnic').value;
-            var cnicPattern = /^[0-9]{13}$/;
-
-            if (!cnicPattern.test(cnic)) {
-                alert('CNIC must be exactly 13 digits long and contain only numbers.');
-                return false;
-            }
-            return true;
-        }
-    </script>
 
 </body>
 
