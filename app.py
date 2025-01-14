@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, session
 import io
+from apscheduler.schedulers.background import BackgroundScheduler
 from database_handler import Database
 from dotenv import load_dotenv
 import os
@@ -13,13 +14,15 @@ import re
 app = Flask(__name__)
 load_dotenv()
 
-
 # use .env file for this??
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 db_handler = Database(SUPABASE_URL, SUPABASE_KEY)
-# encryption_handler = Encryption()
+
+# Initialize APScheduler
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 def get_private_key_path():
     """Returns the appropriate path for storing the private key file"""
@@ -35,7 +38,13 @@ def get_private_key_path():
 
 private_key_file = get_private_key_path()
 
-print("Supabase URL: ", SUPABASE_URL)
+def update_election_status(election_id):
+    """Update the election status to ongoing."""
+    try:
+        db_handler.update_election_status(election_id, True)
+        print(f"Election {election_id} is now ongoing.")
+    except Exception as e:
+        print(f"Failed to update election status: {str(e)}")
 
 # starting page for the voting app
 @app.route('/')
@@ -200,6 +209,16 @@ def view_prev_elections():
 
     # Prepare data
     for election in elections:
+        # Format the start_date
+        if election["start_date"] is not None:
+
+            # Parse the datetime string into a datetime object
+            dt_object = datetime.strptime(election['start_date'], '%Y-%m-%dT%H:%M:%S')
+            # Format the datetime object into the desired format
+            formatted_datetime = dt_object.strftime('%d %B %Y, %H:%M')
+
+            election['formatted_start_date'] = formatted_datetime
+
         if election["decrypted_tally"] is not None:
             results = list(map(int, election["decrypted_tally"].split(',')))
             total_votes = sum(results)
@@ -257,9 +276,19 @@ def start_election():
     zero_vector = None
     zero_vector_r = None
 
-    # Convert to datetime objects
-    start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M').time()
- 
+    #for start_date purposes i.e storing in db
+    parsed_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+    formatted_start_time = parsed_time.strftime("%Y-%m-%d %H:%M:%S.000")
+
+    # for comparing purposes, Remove square brackets and convert string to datetime object
+    datetime_obj = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+
+    right_now = datetime.now()
+
+    # Compare with the current datetime
+    if datetime_obj > right_now:  # Use UTC to match Supabase timestamps
+        status = False  # Set status to False if 'created_at' is in the future
+
     # Initialize a list to store candidate details
     candidates = []
 
@@ -324,7 +353,7 @@ def start_election():
     response1 = db_handler.store_election_data(
         election_id=election_id,
         num_candidates=num_candidates,
-        start_time=start_time,
+        start_time=None,
         # end_time=end_time,
         status=status,
         results_visibility=results_visibility,
@@ -333,13 +362,26 @@ def start_election():
         public_key=public_key,
         negative_tally_encryption=negative_result,
         zero_vector=zero_vector,
-        zero_randomness=zero_vector_r
+        zero_randomness=zero_vector_r,
+        start_date = formatted_start_time
     )
 
     response2 = db_handler.store_candidate_data(
         election_id=election_id,
         candidates=candidates
     )
+
+    # Schedule a job to update the election status to True 
+    try :
+        if datetime_obj > right_now:
+            scheduler.add_job(
+                func=update_election_status,
+                trigger='date',
+                run_date=datetime_obj,
+                args=[election_id]
+            )
+    except Exception as e:
+        print(f"Error scheduling job: {str(e)}")
 
     if response1.data and response2.data:
         # fetch latest created election

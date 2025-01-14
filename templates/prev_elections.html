@@ -41,13 +41,13 @@
                     <div class="card-body">
                         <h5 class="card-title">Election ID: {{ election.id }}</h5>
                         <p>
-                            <span class="badge {{ 'bg-success' if election.ongoing == 'Ongoing' else 'bg-secondary' }}">
+                            <!-- <span class="badge {{ 'bg-success' if election.ongoing == 'Ongoing' else 'bg-secondary' }}">
                                 {{ election.ongoing }}
-                            </span>
+                            </span> -->
                         </p>
                         <p class="card-text">
                             <strong>Number of Candidates:</strong> {{ election.num_candidates }}<br>
-                            <strong>Date:</strong> {{ election.start_time }}<br>
+                            <strong>Start Date:</strong> {{ election.formatted_start_date }}<br>
                             <strong>Results Visibility:</strong> {{ election.results_visibility }}<br>
                             <strong>Decrypted Result:</strong> {{ election.decrypted_tally }}
                         </p>

@@ -58,7 +58,7 @@ class Database:
         self,
         election_id: int,
         num_candidates: int,
-        start_time: datetime.datetime,
+        start_time: str,
         # end_time: datetime.datetime,
         status: bool,
         results_visibility: bool,
@@ -67,7 +67,8 @@ class Database:
         public_key: str,
         negative_tally_encryption: str,
         zero_vector: str,
-        zero_randomness: str
+        zero_randomness: str,
+        start_date: str
     ) -> Dict[str, Any]:
         """
         Store election data in the elections table.
@@ -75,7 +76,7 @@ class Database:
         data = {
             "id": election_id,
             "num_candidates": num_candidates,
-            "start_time": start_time.isoformat(),
+            "start_time": start_time,
             # "end_time": end_time.isoformat(),
             "ongoing": status,
             "results_visibility": results_visibility,
@@ -85,6 +86,7 @@ class Database:
             "negative_tally_encryption": negative_tally_encryption,
             "zero_vector": zero_vector,
             "zero_randomness": zero_randomness,
+            "start_date": start_date
         }
         response = self.supabase.table("elections").insert(data).execute()
         return response
@@ -268,6 +270,13 @@ class Database:
         """
         response = self.supabase.table("candidates").select("*").eq("election_id", election_id).execute()
         return response.data if response.data else []
+
+    def update_election_status(self, election_id: int, mode: bool) -> Optional[Dict[str, Any]]:
+        """
+        Update the status of an election by election ID.
+        """
+        response = self.supabase.table("elections").update({"ongoing": mode}).eq("id", election_id).execute()
+        return response.data if response.data else None
         
     def get_visible_election(self) -> Optional[Dict[str, Any]]:
         """
