@@ -49,15 +49,14 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
         }
 
         .card.tally {
-            flex: 1;
+            width: 60%;
         }
 
         .card.audit {
-            flex: 0.4;
+            width: 40%;
         }
 
         h2 {
@@ -67,14 +66,26 @@
             color: #333;
         }
 
-        .label {
-            font-weight: bold;
-            color: #555;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
         }
 
-        .value {
-            margin-left: 10px;
-            color: #777;
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        tr.winning-candidate {
+            background-color: #d4edda;
+            font-weight: bold;
         }
 
         .result-item {
@@ -82,10 +93,7 @@
             justify-content: space-between;
             padding: 10px 0;
             border-bottom: 1px solid #eee;
-        }
-
-        .result-item:last-child {
-            border-bottom: none;
+            align-items: center;
         }
 
         button {
@@ -98,7 +106,6 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s;
-            margin-top: 10px;
             text-align: center;
         }
 
@@ -129,6 +136,8 @@
         .logout-button:hover {
             background-color: #cc3b3b;
         }
+
+
 
         /* Modal styling */
         .modal {
@@ -190,49 +199,54 @@
     <div class="container">
         <!-- Election Tally Card -->
         <div class="card tally">
-            <h2>Elections Tally</h2>
+            <h2>Election Tally</h2>
             <h5>[Election ID: {{ last_election['id'] }}]</h5>
-            <button onclick="showModal('public_key')">View Public Key</button>
 
-            <!-- Button for Encrypted Total -->
-            <div class="result-item">
-                <span class="label">Encrypted Total:</span>
-                <button onclick="showModal('encrypted-sum')">View Encrypted Sum</button>
-            </div>
-
-            <div class="result-item">
-                <span class="label">Decrypted Total:</span>
-                <span class="value">{{ last_election.decrypted_tally }}</span>
-            </div>
-
-            <!-- Candidate vote counts -->
-            {% for result in results %}
-            <div class="result-item">
-                <span class="label">{{ result.name }}:</span>
-                <span class="value">{{ result.votes }}</span>
-            </div>
-            {% endfor %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Candidate Name</th>
+                        <th>Votes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set max_votes = results | max(attribute='votes') %}
+                    {% for result in results %}
+                    <tr class="{% if result.votes == max_votes %}winning-candidate{% endif %}">
+                        <td>{{ result.name }}</td>
+                        <td>{{ result.votes }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         <!-- Audit Results Card -->
         <div class="card audit">
             <h2>Audit Results</h2>
-
-            <!-- Button for Randomness -->
+            <button onclick="showModal('public_key')">View Public Key</button>
+            <!-- Encrypted Total -->
+            <div class="result-item">
+                <span class="label">Encrypted Total:</span>
+                <button onclick="showModal('encrypted-sum')">View Encrypted Sum</button>
+            </div>
+            <!-- Encryption of Negative Tally -->
             <div class="result-item">
                 <span class="label">Encryption of Negative Tally:</span>
                 <button onclick="showModal('enc')">View</button>
             </div>
+            <!-- Zero Vector -->
             <div class="result-item">
                 <span class="label">Zero Vector:</span>
                 <button onclick="showModal('zero-vector')">View</button>
             </div>
+            <!-- Zero Vector Randomness -->
             <div class="result-item">
                 <span class="label">Zero Vector Randomness:</span>
                 <button onclick="showModal('zero-vector-r')">View</button>
             </div>
 
-            <form action="/perform_audit" method="post">
+            <form action="/perform_audit" method="post" style="padding-top: 5%;">
                 <button type="submit">Run Audit Operation</button>
             </form>
         </div>
@@ -257,14 +271,11 @@
     </div>
 
     <script>
-        // Encrypted sum, randomness, and public key values dynamically passed from the backend
         const encryptedSum = "{{ last_election['encrypted_sum'] }}";
-        const publicKey = "{{ last_election['public_key'] }}";
-        const modalData = "{{ modal_data }}";
         const negativeTally = "{{ last_election['negative_tally_encryption'] }}";
         const zeroVector = "{{ last_election['zero_vector'] }}";
         const zeroVectorRandomness = "{{ last_election['zero_randomness'] }}";
-        
+
         function showModal(field) {
             const modal = document.getElementById('modal');
             const modalText = document.getElementById('modal-text');
@@ -278,17 +289,9 @@
                 textToShow = zeroVector;
             } else if (field === 'zero-vector-r') {
                 textToShow = zeroVectorRandomness;
-            } else if (field === 'public_key') {
-                textToShow = publicKey;
-            } else if (field === 'audit-results') {
-                textToShow = `
-                Zero vector: {{ modal_data['zero_vector'] if modal_data }}\n\n
-                Re-Encrypted Zero Vector:\n{{ modal_data['re_encrypted_zero_vector'] if modal_data }}
-                `;
             }
 
             modalText.textContent = textToShow.replace(/,/g, ',\n');
-            modalText.style.whiteSpace = 'pre-wrap';
             modal.style.display = 'block';
         }
 
@@ -296,15 +299,6 @@
             const modal = document.getElementById('modal');
             modal.style.display = 'none';
         }
-        
-        //show modal if results are present
-        window.onload = function () {
-            var modal_data = "{{modal_data}}";
-            console.log("Modal data:", modal_data)
-            if (modal_data && Object.keys(modal_data).length > 0){
-                showModal('audit-results');
-            }
-        };
     </script>
 </body>
 
